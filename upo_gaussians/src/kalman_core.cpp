@@ -120,7 +120,7 @@ void Strapdown::update_egovel(
 	update_common("egovel", (egovel - pred_egovel).eval(), egovel_cov, H);
 }
 
-void Strapdown::update_scanmatch_3d(
+void Strapdown::update_scanmatch_6dof(
 	Pose const& kf_pose,
 	Pose const& match_pose,
 	Vec<6> const& match_covdiag

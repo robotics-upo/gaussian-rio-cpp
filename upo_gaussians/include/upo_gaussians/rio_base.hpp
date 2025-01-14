@@ -9,10 +9,11 @@ namespace upo_gaussians {
 
 	namespace detail {
 
-		struct RioBaseInitParams : StrapdownInitParams {
+		struct RioBaseInitParams : StrapdownInitParams, StrapdownPropParams {
 			Pose   radar_to_imu  = Pose::Identity();
 			double match_pos_std = 1.0f;             ///< Default scan matching position uncertainty [m]
 			double match_rot_std = 6.0*M_TAU/360.0;  ///< Default scan matching rotation uncertainty [rad]
+			bool   match_6dof    = false;            ///< Whether to enable full 6-DoF scan matching
 		};
 
 		struct RioInput {
@@ -44,6 +45,7 @@ namespace upo_gaussians {
 		void process(Input const& input);
 
 	protected:
+		PropParams m_prop_params;
 		Pose m_radar_to_imu;
 
 		double m_ref_time = -1.0;
@@ -57,6 +59,7 @@ namespace upo_gaussians {
 
 		double m_match_pos_cov;
 		double m_match_rot_cov;
+		bool   m_match_6dof;
 
 		void initialize(
 			double time,
@@ -67,18 +70,16 @@ namespace upo_gaussians {
 			init_vel(vel, vel_cov);
 		}
 
-		void update_scanmatch_3d(
+		void update_scanmatch(
 			Pose const& match_pose,
 			Vec<6> const& match_covdiag
-		) {
-			Strapdown::update_scanmatch_3d(m_keyframe, match_pose, match_covdiag);
-		}
+		);
 
-		void update_scanmatch_3d(Pose const& match_pose) {
+		void update_scanmatch(Pose const& match_pose) {
 			Vec<6> match_covdiag;
 			match_covdiag.segment<3>(0).fill(m_match_pos_cov);
 			match_covdiag.segment<3>(3).fill(m_match_rot_cov);
-			update_scanmatch_3d(match_pose, match_covdiag);
+			update_scanmatch(match_pose, match_covdiag);
 		}
 
 		virtual void scan_matching(RadarCloud const& cl) { }

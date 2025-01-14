@@ -8,10 +8,12 @@ RioBase::RioBase(
 	Keyframer keyframer,
 	InitParams const& p
 ) : Strapdown{p, true},
+	m_prop_params{p},
 	m_radar_to_imu{p.radar_to_imu},
 	m_keyframer{std::move(keyframer)},
 	m_match_pos_cov{p.match_pos_std*p.match_pos_std},
-	m_match_rot_cov{p.match_rot_std*p.match_rot_std}
+	m_match_rot_cov{p.match_rot_std*p.match_rot_std},
+	m_match_6dof{p.match_6dof}
 {
 }
 
@@ -48,7 +50,7 @@ inline void RioBase::process_imu(ImuData::Bundle const& bundle)
 			continue;
 		}
 
-		propagate_imu(tdiff, imu.accel, imu.accel_covdiag, imu.gyro, imu.gyro_covdiag);
+		propagate_imu(tdiff, imu.accel, imu.accel_covdiag, imu.gyro, imu.gyro_covdiag, m_prop_params);
 
 		++num_ok;
 		m_imu_time = imu.timestamp;
@@ -72,6 +74,19 @@ inline RadarCloud RioBase::process_egovel(RadarCloud const& cl, double time)
 	}
 
 	return std::move(r.inliers);
+}
+
+void RioBase::update_scanmatch(
+	Pose const& match_pose,
+	Vec<6> const& match_covdiag
+)
+{
+	if (m_match_6dof) {
+		update_scanmatch_6dof(m_keyframe, match_pose, match_covdiag);
+	} else {
+		// XX: add 3dof version
+		update_scanmatch_6dof(m_keyframe, match_pose, match_covdiag);
+	}
 }
 
 }

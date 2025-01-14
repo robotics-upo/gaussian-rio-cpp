@@ -35,7 +35,7 @@ void RioNdt::scan_matching(RadarCloud const& cl)
 	}
 
 	auto xfrm = Pose(ndt.getFinalTransformation().cast<double>());
-	update_scanmatch_3d(xfrm);
+	update_scanmatch(xfrm);
 }
 
 bool RioNdt::process_keyframe(RadarCloud&& cl)

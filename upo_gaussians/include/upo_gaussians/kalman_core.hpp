@@ -86,7 +86,7 @@ namespace upo_gaussians {
 			Pose   const& radar_to_imu = Pose::Identity()
 		);
 
-		void update_scanmatch_3d(
+		void update_scanmatch_6dof(
 			Pose const& kf_pose,
 			Pose const& match_pose,
 			Vec<6> const& match_covdiag
