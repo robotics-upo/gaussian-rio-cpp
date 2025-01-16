@@ -3,12 +3,17 @@
 
 namespace upo_gaussians {
 
-	struct RadarPoint {
+	struct EIGEN_ALIGN16 RadarPoint {
 		PCL_ADD_POINT4D;
 		float power;
 		float doppler;
 		float _pad[2];
 		EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
+		constexpr RadarPoint(float x = 0.0f, float y = 0.0f, float z = 0.0f, float power = 0.0f, float doppler = 0.0f) :
+			data{x,y,z,1.0f}, power{power}, doppler{doppler}, _pad{} { }
+		constexpr RadarPoint(RadarPoint const&) = default;
+		constexpr RadarPoint(RadarPoint&) = default;
 	};
 
 	using RadarCloud = pcl::PointCloud<RadarPoint>;
