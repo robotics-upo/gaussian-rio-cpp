@@ -92,6 +92,7 @@ target_sources(upo_gaussians PRIVATE
 	src/radar.cpp
 	src/rio_base.cpp
 	src/rio_ndt.cpp
+	src/rio_gicp.cpp
 )
 
 install(
