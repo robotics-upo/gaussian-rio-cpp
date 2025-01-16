@@ -31,8 +31,8 @@ namespace upo_gaussians {
 		);
 
 	protected:
-		void scan_matching(RadarCloud const& cl);
-		bool process_keyframe(RadarCloud&& cl);
+		bool scan_matching(RadarCloud::Ptr cl);
+		bool process_keyframe(RadarCloud::Ptr cl);
 
 	private:
 		NdtParams m_ndt_params;

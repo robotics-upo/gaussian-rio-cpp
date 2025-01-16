@@ -15,7 +15,7 @@ RioNdt::RioNdt(
 {
 }
 
-void RioNdt::scan_matching(RadarCloud const& cl)
+bool RioNdt::scan_matching(RadarCloud::Ptr cl)
 {
 	pcl::NormalDistributionsTransform<RadarPoint, RadarPoint> ndt;
 	ndt.setTransformationEpsilon(m_ndt_params.xfrm_epsilon);
@@ -24,25 +24,24 @@ void RioNdt::scan_matching(RadarCloud const& cl)
 	ndt.setMaximumIterations(m_ndt_params.max_iters);
 
 	ndt.setInputTarget(m_saved_cloud);
-	ndt.setInputSource(std::make_shared<RadarCloud>(cl)); // PCL is stupid, and forces us to copy this
+	ndt.setInputSource(cl);
 
 	RadarCloud idc;
 	ndt.align(idc, kf_pose().matrix().cast<float>());
 
 	if (!ndt.hasConverged()) {
 		std::cerr << "  [NDT] Convergence fail" << std::endl;
-		return;
+		return false;
 	}
 
 	auto xfrm = Pose(ndt.getFinalTransformation().cast<double>());
 	update_scanmatch(xfrm);
+	return true;
 }
 
-bool RioNdt::process_keyframe(RadarCloud&& cl)
+bool RioNdt::process_keyframe(RadarCloud::Ptr cl)
 {
-	m_saved_cloud.reset();
-	m_saved_cloud = std::make_shared<RadarCloud>(std::move(cl));
-
+	m_saved_cloud = cl;
 	return true;
 }
 
