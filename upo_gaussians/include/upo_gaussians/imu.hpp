@@ -18,13 +18,17 @@ namespace upo_gaussians {
 		Vec<3> gyro_covdiag;
 
 #ifdef _UPO_GAUSSIANS_ROS_TYPE
-		static ImuData fromROS(_UPO_GAUSSIANS_ROS_TYPE const& ros) {
+		static ImuData fromROS(
+			_UPO_GAUSSIANS_ROS_TYPE const& ros,
+			double accel_std = 0.0022281160035059417,
+			double gyro_std = 0.00011667951042710442
+		) {
 			ImuData ret;
 			ret.timestamp = ros.header.stamp.toSec();
 			ret.accel << ros.linear_acceleration.x, -ros.linear_acceleration.y, -ros.linear_acceleration.z;
 			ret.gyro  << ros.angular_velocity.x,    -ros.angular_velocity.y,    -ros.angular_velocity.z;
-			ret.accel_covdiag.fill(0.0022281160035059417);
-			ret.gyro_covdiag.fill(0.00011667951042710442);
+			ret.accel_covdiag.fill(accel_std*accel_std);
+			ret.gyro_covdiag.fill(gyro_std*gyro_std);
 			return ret;
 		}
 #endif
