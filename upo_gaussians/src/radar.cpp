@@ -159,7 +159,7 @@ RadarCloud filter_radar_cloud(
 	for (auto& pt : in_cloud) {
 		float azimuth = atan2f(pt.y, pt.x);
 		float elevation = atan2f(pt.z, sqrtf(pt.x*pt.x + pt.y*pt.y + pt.z*pt.z));
-		if (pt.power >= p.min_power && azimuth < p.max_azimuth && elevation < p.max_elevation) {
+		if (pt.power >= p.min_power && fabsf(azimuth) < p.max_azimuth && fabsf(elevation) < p.max_elevation) {
 			out.push_back(pt);
 		}
 	}
