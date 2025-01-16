@@ -1,4 +1,5 @@
 #include <upo_gaussians/kalman_core.hpp>
+#include <iostream>
 
 namespace upo_gaussians {
 
@@ -60,7 +61,7 @@ void Strapdown::propagate_imu(
 	N.setZero();
 	N.block(Pos,WAcc,3,3) = 0.5*timediff*timediff*R;
 	N.block(Vel,WAcc,3,3) = N.block(AttError,WGyr,3,3) = timediff*R;
-	N.block(Vel,WVel,3,3) = N.block(AccBias,WAccBias,3,3) = N.block(GyrBias,WGyrBias,3,3) = Mat<3>::Identity();
+	N.block(Vel,WVel,3,3) = N.block(AccBias,WAccBias,3,3) = N.block(GyrBias,WGyrBias,3,3) = N.block(AttError,WAtt,3,3) = Mat<3>::Identity();
 
 	m_cov = F*m_cov*F.transpose() + N*Qdiag.asDiagonal()*N.transpose();
 }
@@ -109,21 +110,25 @@ void Strapdown::update_egovel(
 	Pose   const& radar_to_imu
 )
 {
-	auto Rt = m_attitude.conjugate().matrix();
+	auto Cwb = m_attitude.conjugate().matrix();
+	auto Cbr = radar_to_imu.rotation().transpose();
 	auto pred_egovel = calc_egovel(angvel, radar_to_imu);
 
 	Mat<3,CovTotal> H;
 	H.setZero();
-	H.block(0,Vel,3,3) = Rt;
-	H.block(0,AttError,3,3) = Rt * skewsym(velocity());
+	H.block(0,Vel,3,3) = Cbr*Cwb;
+	H.block(0,GyrBias,3,3) = Cbr*skewsym(radar_to_imu.translation());
+	H.block(0,AttError,3,3) = Cbr*Cwb*skewsym(velocity());
 
 	update_common("egovel", (egovel - pred_egovel).eval(), egovel_cov, H);
 }
 
-void Strapdown::update_scanmatch_6dof(
+void Strapdown::update_scanmatch(
 	Pose const& kf_pose,
+	Mat<6> const& kf_cov,
 	Pose const& match_pose,
-	Vec<6> const& match_covdiag
+	Vec<6> const& match_covdiag,
+	bool full_6dof
 )
 {
 	Pose pred_pose = kf_pose.inverse() * pose();
@@ -131,13 +136,36 @@ void Strapdown::update_scanmatch_6dof(
 
 	Vec<6> residual;
 	residual.segment<3>(0) = match_pose.translation() - pred_pose.translation();
-	residual.segment<3>(3) = 2.0*(diff_q.vec() / diff_q.w());
+	residual.segment<3>(3) = (2.0/diff_q.w())*diff_q.vec();
 
 	Mat<6,CovTotal> H;
 	H.setZero();
 	H.block(0,Pos,3,3) = H.block(3,AttError,3,3) = kf_pose.rotation().transpose();
 
-	update_common("scanmatch_3d", residual, match_covdiag.asDiagonal(), H);
+	Mat<6> R = kf_cov + match_covdiag.asDiagonal().toDenseMatrix();
+
+	if (full_6dof) {
+		update_common("scanmatch_6dof", residual, R, H);
+	} else {
+		Mat<3,6> Hc;
+		Hc.setZero();
+		Hc(0,0) = Hc(1,1) = Hc(2,5) = 1;
+
+		Vec<3> newresidual = Hc*residual;
+		Mat<3> newR = Hc*R*Hc.transpose();
+		Mat<3,CovTotal> newH = Hc*H;
+
+		update_common("scanmatch_3dof", newresidual, newR, newH);
+	}
+}
+
+Mat<6> Strapdown::error_cov() const
+{
+	Mat<6,CovTotal> H;
+	H.setZero();
+	H.block(0,Pos,3,3) = H.block(3,AttError,3,3) = m_attitude.conjugate().matrix();
+
+	return H*m_cov*H.transpose();
 }
 
 }

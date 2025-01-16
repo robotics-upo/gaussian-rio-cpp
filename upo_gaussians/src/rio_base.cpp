@@ -34,6 +34,7 @@ void RioBase::process(Input const& input)
 
 	if (m_keyframer(*this) && process_keyframe(std::move(cl))) {
 		m_keyframe      = pose();
+		m_keyframe_cov  = error_cov();
 		m_keyframe_time = time();
 	}
 }
@@ -74,19 +75,6 @@ inline RadarCloud RioBase::process_egovel(RadarCloud const& cl, double time)
 	}
 
 	return std::move(r.inliers);
-}
-
-void RioBase::update_scanmatch(
-	Pose const& match_pose,
-	Vec<6> const& match_covdiag
-)
-{
-	if (m_match_6dof) {
-		update_scanmatch_6dof(m_keyframe, match_pose, match_covdiag);
-	} else {
-		// XX: add 3dof version
-		update_scanmatch_6dof(m_keyframe, match_pose, match_covdiag);
-	}
 }
 
 }

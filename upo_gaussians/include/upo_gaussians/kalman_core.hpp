@@ -7,7 +7,7 @@ namespace upo_gaussians {
 	namespace detail {
 
 		struct StrapdownInitParams {
-			double rp_att_std     = 5*M_TAU/360;
+			double rp_att_std     = 15*M_TAU/360;
 			double accel_bias_std = 0.02;
 			double gyro_bias_std  = 0.00035*M_TAU/360;
 		};
@@ -54,6 +54,7 @@ namespace upo_gaussians {
 		Vec<3> velocity()   const { return m_state.segment<3>(Vel);           }
 		Vec<3> accel_bias() const { return m_state.segment<3>(AccBias);       }
 		Vec<3> gyro_bias()  const { return m_state.segment<3>(GyrBias);       }
+		Mat<6> error_cov() const;
 
 		Strapdown(
 			InitParams const& p = InitParams{},
@@ -86,10 +87,12 @@ namespace upo_gaussians {
 			Pose   const& radar_to_imu = Pose::Identity()
 		);
 
-		void update_scanmatch_6dof(
+		void update_scanmatch(
 			Pose const& kf_pose,
+			Mat<6> const& kf_cov,
 			Pose const& match_pose,
-			Vec<6> const& match_covdiag
+			Vec<6> const& match_covdiag,
+			bool full_6dof = false
 		);
 
 	private:

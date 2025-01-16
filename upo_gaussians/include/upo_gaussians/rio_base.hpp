@@ -54,6 +54,7 @@ namespace upo_gaussians {
 		Vec<3> m_angvel = Vec<3>::Zero();
 
 		Pose m_keyframe = Pose::Identity();
+		Mat<6> m_keyframe_cov{};
 		double m_keyframe_time = -1.0;
 		Keyframer m_keyframer;
 
@@ -73,7 +74,9 @@ namespace upo_gaussians {
 		void update_scanmatch(
 			Pose const& match_pose,
 			Vec<6> const& match_covdiag
-		);
+		) {
+			Strapdown::update_scanmatch(m_keyframe, m_keyframe_cov, match_pose, match_covdiag, m_match_6dof);
+		}
 
 		void update_scanmatch(Pose const& match_pose) {
 			Vec<6> match_covdiag;
