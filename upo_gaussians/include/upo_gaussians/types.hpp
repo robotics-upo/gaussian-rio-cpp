@@ -65,8 +65,8 @@ namespace upo_gaussians {
 	static inline Pose make_pose(Quat const& rot, Vec<3> const& tran)
 	{
 		Pose ret = Pose::Identity();
-		ret.rotate(rot);
-		ret.translate(tran);
+		ret.matrix().block(0,0,3,3) = rot.toRotationMatrix();
+		ret.matrix().block(0,3,3,1) = tran;
 		return ret;
 	}
 
