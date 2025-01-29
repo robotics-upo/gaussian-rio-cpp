@@ -3,9 +3,8 @@
 
 namespace upo_gaussians {
 
-	template <typename PointType, typename RandomEngine, typename Scalar = double>
+	template <typename RandomEngine, typename Scalar = double>
 	class BisectingKMeans {
-		using CloudType = pcl::PointCloud<PointType>;
 		using PosVector = Eigen::Vector<Scalar, 3>;
 		using CenterMtx = Eigen::Matrix<Scalar, 3, Eigen::Dynamic>;
 
@@ -116,13 +115,13 @@ namespace upo_gaussians {
 			}
 		};
 
-		CloudType const& m_cloud;
+		AnyCloudIn m_cloud;
 		RandomEngine& m_rng;
 		std::vector<Tree> m_nodes;
 		Scalar m_tol;
 
 		PosVector point(size_t id) const {
-			return m_cloud[id].getVector3fMap().template cast<Scalar>();
+			return m_cloud.col(id).segment<3>(0).cast<Scalar>();
 		}
 
 		size_t random_index(std::vector<size_t> const& indices) {
@@ -130,13 +129,17 @@ namespace upo_gaussians {
 		}
 
 	public:
-		BisectingKMeans(CloudType const& cl, RandomEngine& rng, size_t num_clusters, Scalar tol = 1.0e-4) :
+		template <typename PointType>
+		BisectingKMeans(pcl::PointCloud<PointType> const& cl, RandomEngine& rng, size_t num_clusters, Scalar tol = 1.0e-4) :
+			BisectingKMeans{cl.getMatrixXfMap(), rng, num_clusters, tol} { }
+
+		BisectingKMeans(AnyCloudIn cl, RandomEngine& rng, size_t num_clusters, Scalar tol) :
 			m_cloud{cl}, m_rng{rng}, m_tol{tol}
 		{
 			m_nodes.reserve(2*num_clusters - 1);
 
 			auto& root = m_nodes.emplace_back();
-			root.initialize(cl.size());
+			root.initialize(cl.cols());
 
 			while (--num_clusters) {
 				root.candidate()->split(*this);
