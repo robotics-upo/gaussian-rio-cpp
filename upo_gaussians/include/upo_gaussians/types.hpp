@@ -5,6 +5,9 @@
 
 // C++
 #include <vector>
+#include <numeric>
+#include <algorithm>
+#include <random>
 
 // Eigen
 #include <Eigen/Core>

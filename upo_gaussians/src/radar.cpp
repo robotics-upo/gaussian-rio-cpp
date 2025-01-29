@@ -1,10 +1,4 @@
 #include <upo_gaussians/radar.hpp>
-
-#include <vector>
-#include <numeric>
-#include <algorithm>
-#include <random>
-
 #include <iostream>
 
 namespace upo_gaussians {
