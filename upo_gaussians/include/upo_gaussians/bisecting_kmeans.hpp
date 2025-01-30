@@ -133,7 +133,7 @@ namespace upo_gaussians {
 		BisectingKMeans(pcl::PointCloud<PointType> const& cl, RandomEngine& rng, size_t num_clusters, Scalar tol = 1.0e-4) :
 			BisectingKMeans{cl.getMatrixXfMap(), rng, num_clusters, tol} { }
 
-		BisectingKMeans(AnyCloudIn cl, RandomEngine& rng, size_t num_clusters, Scalar tol) :
+		BisectingKMeans(AnyCloudIn cl, RandomEngine& rng, size_t num_clusters, Scalar tol = 1.0e-4) :
 			m_cloud{cl}, m_rng{rng}, m_tol{tol}
 		{
 			m_nodes.reserve(2*num_clusters - 1);

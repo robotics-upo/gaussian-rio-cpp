@@ -12,6 +12,8 @@ endif()
 
 find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(PCL 1.3 REQUIRED COMPONENTS common)
+find_package(OpenMP REQUIRED)
+find_package(Ceres REQUIRED)
 find_package(small_gicp REQUIRED)
 
 # PCL uses old-style CMake... we need to wrap it into a proper target
@@ -64,6 +66,8 @@ target_link_libraries(upo_gaussians PUBLIC
 )
 
 target_link_libraries(upo_gaussians PRIVATE
+	OpenMP::OpenMP_CXX
+	Ceres::ceres
 	small_gicp::small_gicp
 )
 
@@ -90,6 +94,7 @@ target_include_directories(upo_gaussians PUBLIC
 target_sources(upo_gaussians PRIVATE
 	src/kalman_core.cpp
 	src/radar.cpp
+	src/gaussian_fitting.cpp
 	src/rio_base.cpp
 	src/rio_ndt.cpp
 	src/rio_gicp.cpp

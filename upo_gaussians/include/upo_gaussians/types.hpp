@@ -39,6 +39,9 @@ namespace upo_gaussians {
 	using DynVecf = Eigen::VectorXf;
 	using DynVecd = Eigen::VectorXd;
 
+	template <int rows, typename T = double>
+	using VecArray = Eigen::Matrix<T, rows, Eigen::Dynamic, Eigen::ColMajor>;
+
 	using AnyCloudIn  = Eigen::Ref<Eigen::MatrixXf const, Eigen::Aligned, Eigen::OuterStride<>> const&;
 	using AnyCloudOut = Eigen::Ref<Eigen::MatrixXf,       Eigen::Aligned, Eigen::OuterStride<>>;
 
