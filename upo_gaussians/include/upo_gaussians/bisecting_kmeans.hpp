@@ -14,7 +14,7 @@ namespace upo_gaussians {
 			Tree* right = nullptr;
 			PosVector center = PosVector::Zero();
 
-			bool is_leaf() const { return !indices.empty(); }
+			bool is_leaf() const { return !left || !right; }
 			size_t size() const { return indices.size(); }
 
 			void initialize(size_t num_points)
@@ -125,7 +125,7 @@ namespace upo_gaussians {
 		}
 
 		size_t random_index(std::vector<size_t> const& indices) {
-			return indices[std::uniform_int_distribution<size_t>{0, indices.size()}(m_rng)];
+			return indices[std::uniform_int_distribution<size_t>{0, indices.size()-1}(m_rng)];
 		}
 
 	public:
