@@ -104,6 +104,7 @@ target_sources(upo_gaussians PRIVATE
 	src/rio_base.cpp
 	src/rio_ndt.cpp
 	src/rio_gicp.cpp
+	src/rio_gaussian.cpp
 )
 
 install(
