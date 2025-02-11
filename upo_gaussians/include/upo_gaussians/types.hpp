@@ -21,6 +21,12 @@
 #define M_TAU (2*M_PI)
 #endif
 
+#ifdef __CUDACC__
+#define UPO_HOST_DEVICE __host__ __device__
+#else
+#define UPO_HOST_DEVICE
+#endif
+
 namespace upo_gaussians {
 
 	constexpr auto Dyn = Eigen::Dynamic;
@@ -39,6 +45,11 @@ namespace upo_gaussians {
 	using DynVecf = Eigen::VectorXf;
 	using DynVecd = Eigen::VectorXd;
 
+	template <int rows, int cols, typename T = double>
+	using MultiVec = Eigen::Matrix<T, rows, cols, Eigen::ColMajor>;
+	template <int rows, int cols>
+	using MultiVecf = MultiVec<rows, cols, float>;
+
 	template <int rows, typename T = double>
 	using VecArray = Eigen::Matrix<T, rows, Eigen::Dynamic, Eigen::ColMajor>;
 
@@ -46,14 +57,20 @@ namespace upo_gaussians {
 	using AnyCloudOut = Eigen::Ref<Eigen::MatrixXf,       Eigen::Aligned, Eigen::OuterStride<>>;
 
 	using Quat = Eigen::Quaterniond;
+	using Quatf = Eigen::Quaternionf;
 	using Pose = Eigen::Isometry3d;
 
-	static inline Mat<3> skewsym(Vec<3> const& v)
+	using QuatArray = Eigen::Vector<Eigen::Quaterniond, Eigen::Dynamic>;
+	using PoseArray = Eigen::Vector<Eigen::Isometry3d, Eigen::Dynamic>;
+
+	template <typename Derived>
+	UPO_HOST_DEVICE static inline auto skewsym(Eigen::MatrixBase<Derived> const& v)
 	{
-		Mat<3> m; m <<
-			+0,     -v.z(), +v.y(),
-			+v.z(), +0,     -v.x(),
-			-v.y(), +v.x(), +0;
+		using T = typename Eigen::MatrixBase<Derived>::Scalar;
+		Mat<3,3,T> m; m <<
+			T{0.0}, -v.z(), +v.y(),
+			+v.z(), T{0.0}, -v.x(),
+			-v.y(), +v.x(), T{0.0};
 		return m;
 	}
 

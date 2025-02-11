@@ -86,6 +86,10 @@ set_target_properties(upo_gaussians PROPERTIES
 	#CUDA_ARCHITECTURES "50;53-real;61-real;75-real;86-real"
 )
 
+target_include_directories(upo_gaussians PRIVATE
+	${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+)
+
 target_include_directories(upo_gaussians PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 	$<INSTALL_INTERFACE:include>
@@ -95,6 +99,8 @@ target_sources(upo_gaussians PRIVATE
 	src/kalman_core.cpp
 	src/radar.cpp
 	src/gaussian_fitting.cpp
+	src/gaussian_scan_matching.cpp
+	src/icg_kernels.cu
 	src/rio_base.cpp
 	src/rio_ndt.cpp
 	src/rio_gicp.cpp

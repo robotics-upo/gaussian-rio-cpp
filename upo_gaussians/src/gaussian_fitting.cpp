@@ -125,7 +125,7 @@ class GaussianModelMaker final : private ceres::EvaluationCallback {
 
 			Eigen::Vector3d pt = point<double>(i);
 
-			for (size_t j = 0; j < (size_t)m_model.centers.cols(); j ++) {
+			for (size_t j = 0; j < (size_t)m_model.size(); j ++) {
 				double cur_sqdist = g_invnormscales.col(j).cwiseProduct(m_model.quats(j).conjugate()*(pt - m_model.centers.col(j))).squaredNorm();
 
 				if (best_g < 0 || cur_sqdist < best_sqdist) {
@@ -162,7 +162,7 @@ public:
 			BisectingKMeans{cl, g, p.num_gaussians}.get_centers(m_model.centers);
 		}
 
-		auto num_gaussians = m_model.centers.cols();
+		auto num_gaussians = m_model.size();
 		m_model.log_scales.resize(Eigen::NoChange, num_gaussians);
 		m_model.quats.resize(num_gaussians);
 
