@@ -74,12 +74,9 @@ void Strapdown::update_common(
 	Mat<N,CovTotal> const& H
 )
 {
-	Mat<N> Sinv;
-	Sinv.setIdentity();
-	(H*m_cov*H.transpose() + as_dense(R)).ldlt().solveInPlace(Sinv);
-
-	auto K = m_cov*H.transpose()*Sinv;
-	auto L = Cov::Identity() - K*H;
+	auto SinvT = (H*m_cov*H.transpose() + as_dense(R)).transpose().ldlt();
+	auto K = SinvT.solve((m_cov*H.transpose()).transpose()).transpose().eval();
+	auto L = (Cov::Identity() - K*H).eval();
 
 	auto gain = (K*residual).eval();
 	m_state += gain.template segment<StateTotal>(0);
