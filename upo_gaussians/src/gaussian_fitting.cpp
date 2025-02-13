@@ -219,6 +219,13 @@ public:
 		options.minimizer_progress_to_stdout = m_verbose;
 		options.num_threads = m_num_threads;
 		options.dynamic_sparsity = true;
+		options.use_mixed_precision_solves = true;
+		options.parameter_tolerance = 1e-4;
+		options.function_tolerance = 1e-3;
+		options.gradient_tolerance = 1e-4*options.function_tolerance;
+		options.line_search_sufficient_function_decrease = 1e-3;
+		options.min_line_search_step_size = 1e-5;
+
 		ceres::Solver::Summary summary;
 		Solve(options, &m_problem, &summary);
 
