@@ -159,15 +159,23 @@ public:
 	{
 		{
 			std::mt19937 g{3135134162};
-			BisectingKMeans{cl, g, p.num_gaussians}.get_centers(m_model.centers);
+			BisectingKMeans kmeans{cl, g, p.num_gaussians};
+
+			kmeans.get_centers(m_model.centers);
+			if (p.initial_scale <= 0.0) {
+				kmeans.get_scalerot(m_model.log_scales, m_model.quats, m_scale_base);
+			}
 		}
 
 		auto num_gaussians = m_model.size();
-		m_model.log_scales.resize(Eigen::NoChange, num_gaussians);
-		m_model.quats.resize(num_gaussians);
 
-		m_model.log_scales.fill(std::log(p.initial_scale));
-		m_model.quats.fill(Eigen::Quaterniond::Identity());
+		if (p.initial_scale > 0.0) {
+			m_model.log_scales.resize(Eigen::NoChange, num_gaussians);
+			m_model.quats.resize(num_gaussians);
+
+			m_model.log_scales.fill(std::log(p.initial_scale));
+			m_model.quats.fill(Eigen::Quaterniond::Identity());
+		}
 
 		m_point_costs.reserve(cl.cols());
 

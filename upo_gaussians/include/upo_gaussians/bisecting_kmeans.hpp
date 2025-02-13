@@ -5,14 +5,16 @@ namespace upo_gaussians {
 
 	template <typename RandomEngine, typename Scalar = double>
 	class BisectingKMeans {
-		using PosVector = Eigen::Vector<Scalar, 3>;
-		using CenterMtx = Eigen::Matrix<Scalar, 3, Eigen::Dynamic>;
+		using Vector    = Eigen::Vector<Scalar, 3>;
+		using Quat      = Eigen::Quaternion<Scalar>;
+		using VectorMtx = Eigen::Matrix<Scalar, 3, Eigen::Dynamic>;
+		using QuatMtx   = Eigen::Vector<Quat, Eigen::Dynamic>;
 
 		struct Tree {
 			std::vector<size_t> indices;
 			Tree* left = nullptr;
 			Tree* right = nullptr;
-			PosVector center = PosVector::Zero();
+			Vector center = Vector::Zero();
 
 			bool is_leaf() const { return !left || !right; }
 			size_t size() const { return indices.size(); }
@@ -71,7 +73,7 @@ namespace upo_gaussians {
 				indices.shrink_to_fit();
 			}
 
-			void get_center(CenterMtx& out, Eigen::Index& i) const
+			void get_center(VectorMtx& out, Eigen::Index& i) const
 			{
 				if (is_leaf()) {
 					out.col(i++) = center;
@@ -81,12 +83,23 @@ namespace upo_gaussians {
 				}
 			}
 
+			void get_scalerot(BisectingKMeans const& ctx, VectorMtx& out_scales, QuatMtx& out_quats, Eigen::Index& i, Scalar min_logsize) const
+			{
+				if (is_leaf()) {
+					calc_scalerot(ctx, out_scales.col(i).data(), out_quats(i), min_logsize);
+					++i;
+				} else {
+					left->get_scalerot(ctx, out_scales, out_quats, i, min_logsize);
+					right->get_scalerot(ctx, out_scales, out_quats, i, min_logsize);
+				}
+			}
+
 		private:
 			Scalar rebalance(BisectingKMeans& ctx)
 			{
 				Scalar cost = 0.0;
-				PosVector lcenter = PosVector::Zero();
-				PosVector rcenter = PosVector::Zero();
+				Vector lcenter = Vector::Zero();
+				Vector rcenter = Vector::Zero();
 
 				left->indices.clear();
 				right->indices.clear();
@@ -113,6 +126,19 @@ namespace upo_gaussians {
 
 				return cost;
 			}
+
+			void calc_scalerot(BisectingKMeans const& ctx, Scalar* logscale, Quat& rot, Scalar min_logsize) const
+			{
+				Eigen::Matrix<Scalar, 3, Eigen::Dynamic> pts;
+				pts.resize(Eigen::NoChange, indices.size());
+				for (size_t i = 0; i < indices.size(); i ++) {
+					pts.col(i) = ctx.point(indices[i]) - center;
+				}
+
+				auto svd = (pts*pts.transpose()).jacobiSvd(Eigen::ComputeFullU);
+				Eigen::Map<Vector>{logscale} = (Scalar{0.5}*svd.singularValues().array().log()).max(min_logsize).matrix();
+				rot = svd.matrixU().transpose() / svd.matrixU().determinant();
+			}
 		};
 
 		AnyCloudIn m_cloud;
@@ -120,7 +146,7 @@ namespace upo_gaussians {
 		std::vector<Tree> m_nodes;
 		Scalar m_tol;
 
-		PosVector point(size_t id) const {
+		Vector point(size_t id) const {
 			return m_cloud.col(id).segment<3>(0).cast<Scalar>();
 		}
 
@@ -130,10 +156,10 @@ namespace upo_gaussians {
 
 	public:
 		template <typename PointType>
-		BisectingKMeans(pcl::PointCloud<PointType> const& cl, RandomEngine& rng, size_t num_clusters, Scalar tol = 1.0e-4) :
+		BisectingKMeans(pcl::PointCloud<PointType> const& cl, RandomEngine& rng, size_t num_clusters, Scalar tol = Scalar{1.0e-4}) :
 			BisectingKMeans{cl.getMatrixXfMap(), rng, num_clusters, tol} { }
 
-		BisectingKMeans(AnyCloudIn cl, RandomEngine& rng, size_t num_clusters, Scalar tol = 1.0e-4) :
+		BisectingKMeans(AnyCloudIn cl, RandomEngine& rng, size_t num_clusters, Scalar tol = Scalar{1.0e-4}) :
 			m_cloud{cl}, m_rng{rng}, m_tol{tol}
 		{
 			m_nodes.reserve(2*num_clusters - 1);
@@ -146,11 +172,19 @@ namespace upo_gaussians {
 			}
 		}
 
-		void get_centers(CenterMtx& out) const
+		void get_centers(VectorMtx& out) const
 		{
 			Eigen::Index i = 0;
 			out.resize(Eigen::NoChange, (m_nodes.size()+1)/2);
 			m_nodes[0].get_center(out, i);
+		}
+
+		void get_scalerot(VectorMtx& out_scales, QuatMtx& out_quats, Scalar min_logsize = Scalar{-3.0}) const
+		{
+			Eigen::Index i = 0;
+			out_scales.resize(Eigen::NoChange, (m_nodes.size()+1)/2);
+			out_quats.resize((m_nodes.size()+1)/2);
+			m_nodes[0].get_scalerot(*this, out_scales, out_quats, i, min_logsize);
 		}
 
 	};
