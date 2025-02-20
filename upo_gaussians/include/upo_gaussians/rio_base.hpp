@@ -17,6 +17,7 @@ namespace upo_gaussians {
 			float    egovel_pct    = 0.05f;            ///< Egovelocity outlier percentile for EKF update rejection filter [0,1)
 			float    scanmatch_pct = 0.1f;             ///< Scan matching outlier percentile for EKF update rejection filter [0,1)
 			uint8_t  num_threads   = 4;                ///< Number of threads used for processing (hint)
+			bool     deterministic = true;             ///< Attempts to use deterministic algorithms, may be slower (hint)
 			bool     match_6dof    = false;            ///< true for 6-DoF scan matching, false for 3-DoF (x/y/yaw)
 		};
 
@@ -68,6 +69,7 @@ namespace upo_gaussians {
 
 		double m_match_pos_cov;
 		double m_match_rot_cov;
+		bool   m_deterministic;
 		bool   m_match_6dof;
 
 		unsigned m_num_threads;
@@ -77,6 +79,7 @@ namespace upo_gaussians {
 		float m_scanmatch_pct;
 
 		unsigned num_threads() const { return m_num_threads; }
+		bool   deterministic() const { return m_deterministic; }
 		double   voxel_size()  const { return m_voxel_size;  }
 
 		void initialize(

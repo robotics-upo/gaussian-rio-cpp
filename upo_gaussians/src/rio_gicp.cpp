@@ -2,9 +2,12 @@
 #include <iostream>
 
 #include <small_gicp/pcl/pcl_point_traits.hpp>
+#include <small_gicp/ann/kdtree.hpp>
 #include <small_gicp/ann/kdtree_omp.hpp>
+#include <small_gicp/util/normal_estimation.hpp>
 #include <small_gicp/util/normal_estimation_omp.hpp>
 #include <small_gicp/factors/gicp_factor.hpp>
+#include <small_gicp/registration/reduction.hpp>
 #include <small_gicp/registration/reduction_omp.hpp>
 #include <small_gicp/registration/registration.hpp>
 
@@ -18,14 +21,40 @@ class RioGicp::Model final {
 	std::vector<Eigen::Matrix4d> m_covs;
 	small_gicp::UnsafeKdTree<Model> m_kdtree;
 
+	struct DeferKdTreeBuilding {
+		template <typename KdTree, typename PointCloud>
+		void build_tree(KdTree& kdtree, const PointCloud& points) const { }
+	};
+
+	template <typename ReductionCls>
+	small_gicp::RegistrationResult align(
+		small_gicp::Registration<small_gicp::GICPFactor, ReductionCls>& reg,
+		Model const& cl
+	) const
+	{
+		reg.rejector.max_dist_sq = m_parent.m_gicp_params.max_corr_dist*m_parent.m_gicp_params.max_corr_dist;
+		reg.criteria.rotation_eps = m_parent.m_gicp_params.rot_eps;
+		reg.criteria.translation_eps = m_parent.m_gicp_params.tran_eps;
+		reg.optimizer.max_iterations = m_parent.m_gicp_params.max_iters;
+		reg.optimizer.verbose = false;
+
+		return reg.align(*this, cl, m_kdtree, m_parent.kf_pose());
+	}
+
 public:
 	Model(RioGicp const& parent, RadarCloud::Ptr&& cl) :
 		m_parent{parent},
 		m_cl{std::move(cl)},
 		m_covs{m_cl->size()},
-		m_kdtree{*this, small_gicp::KdTreeBuilderOMP(parent.num_threads())}
+		m_kdtree{*this, DeferKdTreeBuilding()}
 	{
-		small_gicp::estimate_covariances_omp(*this, m_kdtree, parent.m_gicp_params.num_neighbors, parent.num_threads());
+		if (parent.deterministic()) {
+			small_gicp::KdTreeBuilder().build_tree(m_kdtree, *this);
+			small_gicp::estimate_covariances(*this, m_kdtree, parent.m_gicp_params.num_neighbors);
+		} else {
+			small_gicp::KdTreeBuilderOMP(parent.num_threads()).build_tree(m_kdtree, *this);
+			small_gicp::estimate_covariances_omp(*this, m_kdtree, parent.m_gicp_params.num_neighbors, parent.num_threads());
+		}
 	}
 
 	bool contains(RadarCloud const& cl) const { return m_cl.get() == &cl; }
@@ -34,15 +63,14 @@ public:
 	{
 		using namespace small_gicp;
 
-		Registration<GICPFactor, ParallelReductionOMP> reg;
-		reg.reduction.num_threads = m_parent.num_threads();
-		reg.rejector.max_dist_sq = m_parent.m_gicp_params.max_corr_dist*m_parent.m_gicp_params.max_corr_dist;
-		reg.criteria.rotation_eps = m_parent.m_gicp_params.rot_eps;
-		reg.criteria.translation_eps = m_parent.m_gicp_params.tran_eps;
-		reg.optimizer.max_iterations = m_parent.m_gicp_params.max_iters;
-		reg.optimizer.verbose = false;
-
-		return reg.align(*this, cl, m_kdtree, m_parent.kf_pose());
+		if (m_parent.deterministic()) {
+			Registration<GICPFactor, SerialReduction> reg;
+			return align(reg, cl);
+		} else {
+			Registration<GICPFactor, ParallelReductionOMP> reg;
+			reg.reduction.num_threads = m_parent.num_threads();
+			return align(reg, cl);
+		}
 	}
 };
 

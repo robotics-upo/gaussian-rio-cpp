@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include <small_gicp/pcl/pcl_point_traits.hpp>
+#include <small_gicp/util/downsampling.hpp>
 #include <small_gicp/util/downsampling_omp.hpp>
 
 namespace upo_gaussians {
@@ -16,6 +17,7 @@ RioBase::RioBase(
 	m_keyframer{std::move(keyframer)},
 	m_match_pos_cov{p.match_pos_std*p.match_pos_std},
 	m_match_rot_cov{p.match_rot_std*p.match_rot_std},
+	m_deterministic{p.deterministic},
 	m_match_6dof{p.match_6dof},
 	m_num_threads{p.num_threads},
 	m_voxel_size{p.voxel_size},
@@ -36,7 +38,11 @@ void RioBase::process(Input const& input)
 	pcl::transformPointCloud(cl, cl, m_radar_to_imu.matrix().cast<float>());
 
 	if (m_voxel_size > 0.0) {
-		cl = std::move(*small_gicp::voxelgrid_sampling_omp(cl, m_voxel_size, m_num_threads));
+		if (m_deterministic) {
+			cl = std::move(*small_gicp::voxelgrid_sampling(cl, m_voxel_size));
+		} else {
+			cl = std::move(*small_gicp::voxelgrid_sampling_omp(cl, m_voxel_size, m_num_threads));
+		}
 	}
 
 	auto cl_ptr = std::make_shared<RadarCloud>(std::move(cl));
