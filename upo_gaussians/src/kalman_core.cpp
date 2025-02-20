@@ -40,7 +40,7 @@ void Strapdown::propagate_imu(
 
 	m_state.segment<3>(Pos) += timediff*velocity() + 0.5*timediff*timediff*(accel_world + g);
 	m_state.segment<3>(Vel) += timediff*(accel_world + g);
-	m_attitude = m_attitude * pure_quat_exp(0.5*timediff*(gyro - gyro_bias()));
+	m_attitude = m_attitude * so3_exp(timediff*(gyro - gyro_bias()));
 
 	Mat<CovTotal> F;
 	F.setIdentity();
@@ -96,7 +96,7 @@ void Strapdown::update_common(
 	m_cov = L*m_cov*L.transpose() + K*R*K.transpose();
 
 	// ESKF reset
-	auto qerr = pure_quat_exp(0.5*gain.template segment<3>(AttError));
+	auto qerr = so3_exp(gain.template segment<3>(AttError));
 	Mat<CovTotal> G;
 	G.setIdentity();
 	G.block(AttError,AttError,3,3) = qerr.matrix();
@@ -148,7 +148,7 @@ void Strapdown::update_scanmatch(
 
 	Vec<6> residual;
 	residual.segment<3>(0) = match_pose.translation() - pred_pose.translation();
-	residual.segment<3>(3) = (2.0/diff_q.w())*diff_q.vec();
+	residual.segment<3>(3) = so3_log(diff_q);
 
 	Mat<6,CovTotal> H;
 	H.setZero();

@@ -27,7 +27,7 @@ inline PoseArray RioGaussian::particle_swarm()
 	for (size_t i = 1; i < m_num_particles; i ++) {
 		Vec<3> tran { rng(m_rng), rng(m_rng), rng(m_rng) };
 		Vec<3> rot  { rng(m_rng), rng(m_rng), rng(m_rng) };
-		pa(i) = make_pose(pure_quat_exp(0.5*rot*m_particle_std_rot), tran*m_particle_std_xyz);
+		pa(i) = make_pose(so3_exp(rot*m_particle_std_rot), tran*m_particle_std_xyz);
 	}
 
 	return pa;

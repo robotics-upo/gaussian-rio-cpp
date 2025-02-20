@@ -74,18 +74,50 @@ namespace upo_gaussians {
 		return m;
 	}
 
-	static inline double sinc(double x)
+	template <typename T>
+	static constexpr T eps2 = T{1e-8};
+
+	// https://github.com/strasdat/Sophus/blob/main/sophus/so3.hpp#L716-L752
+	template <typename Derived>
+	static inline auto so3_exp(Eigen::MatrixBase<Derived> const& v)
 	{
-		x = fabs(x) + 1e-14;
-		return sin(x) / x;
+		using T = typename Eigen::MatrixBase<Derived>::Scalar;
+		static_assert(
+			Eigen::MatrixBase<Derived>::RowsAtCompileTime==3 && Eigen::MatrixBase<Derived>::ColsAtCompileTime==1,
+			"Bad dimensions"
+		);
+
+		T theta2 = v.squaredNorm();
+		T im, re;
+		if (theta2 < eps2<T>) {
+			T theta4 = theta2*theta2;
+			im = T{0.5} - T{1/48.0}*theta2 + T{1/3840.0}*theta4;
+			re = T{1.0} - T{1/ 8.0}*theta2 + T{1/ 384.0}*theta4;
+		} else {
+			T theta = sqrt(theta2);
+			T halftheta = T{0.5}*theta;
+			im = sin(halftheta)/theta;
+			re = cos(halftheta);
+		}
+
+		return Eigen::Quaternion<T>(re, im*v(0), im*v(1), im*v(2));
 	}
 
-	static inline Quat pure_quat_exp(Vec<3> const& v)
+	// https://github.com/pettni/smooth/blob/master/include/smooth/detail/so3.hpp#L124-L137
+	template <typename T>
+	static inline Vec<3,T> so3_log(Eigen::Quaternion<T> const& q_)
 	{
-		double norm = v.norm();
-		double qw = cos(norm);
-		auto qv = sinc(norm)*v;
-		return Quat(qw, qv.x(), qv.y(), qv.z());
+		T xyz2 = q_.vec().squaredNorm();
+
+		return T{2}*[&]() -> T {
+			if (xyz2 < eps2<T>) {
+				// https://www.wolframalpha.com/input/?i=series+atan%28y%2Fx%29+%2F+y+at+y%3D0
+				return T{1}/q_.w() - xyz2/(T{3}*q_.w()*q_.w()*q_.w());
+			} else {
+				T xyz = sqrt(xyz2);
+				return atan2(xyz, q_.w())/xyz;
+			}
+		}()*q_.vec();
 	}
 
 	static inline Pose make_pose(Quat const& rot, Vec<3> const& tran)

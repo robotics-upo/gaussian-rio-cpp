@@ -127,7 +127,7 @@ void IcgContext::iteration()
 			auto J = M.block(3,0,9,3);
 
 			Vec<3> dtheta = J.jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV).solve(F);
-			Quat q = pure_quat_exp(0.5*dtheta) * m_T_rot[i].cast<double>();
+			Quat q = so3_exp(dtheta) * m_T_rot[i].cast<double>();
 			q.normalize();
 			m_T_rot[i] = q.cast<float>();
 
