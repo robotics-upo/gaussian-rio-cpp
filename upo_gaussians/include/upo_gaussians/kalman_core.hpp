@@ -84,7 +84,8 @@ namespace upo_gaussians {
 			Vec<3> const& egovel,
 			Mat<3> const& egovel_cov,
 			Vec<3> const& angvel = Vec<3>::Zero(),
-			Pose   const& radar_to_imu = Pose::Identity()
+			Pose   const& radar_to_imu = Pose::Identity(),
+			double outlier_percentile = 0.05
 		);
 
 		void update_scanmatch(
@@ -92,7 +93,8 @@ namespace upo_gaussians {
 			Mat<6> const& kf_cov,
 			Pose const& match_pose,
 			Vec<6> const& match_covdiag,
-			bool full_6dof = false
+			bool full_6dof = false,
+			double outlier_percentile = 0.1
 		);
 
 	private:
@@ -115,7 +117,8 @@ namespace upo_gaussians {
 			const char* name,
 			Vec<N> const& residual,
 			RType const& R,
-			Mat<N,CovTotal> const& H
+			Mat<N,CovTotal> const& H,
+			double outlier_percentile
 		);
 	};
 }

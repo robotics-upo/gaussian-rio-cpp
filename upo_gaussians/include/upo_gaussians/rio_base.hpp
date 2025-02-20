@@ -14,7 +14,9 @@ namespace upo_gaussians {
 			double   voxel_size    = 0.25;             ///< Voxel grid resolution used for downsampling (0=disable) [m]
 			double   match_pos_std = 1.0f;             ///< Default scan matching position uncertainty [m]
 			double   match_rot_std = 6.0*M_TAU/360.0;  ///< Default scan matching rotation uncertainty [rad]
-			uint16_t num_threads   = 4;                ///< Number of threads used for processing (hint)
+			float    egovel_pct    = 0.05f;            ///< Egovelocity outlier percentile for EKF update rejection filter [0,1)
+			float    scanmatch_pct = 0.1f;             ///< Scan matching outlier percentile for EKF update rejection filter [0,1)
+			uint8_t  num_threads   = 4;                ///< Number of threads used for processing (hint)
 			bool     match_6dof    = false;            ///< true for 6-DoF scan matching, false for 3-DoF (x/y/yaw)
 		};
 
@@ -71,6 +73,9 @@ namespace upo_gaussians {
 		unsigned m_num_threads;
 		double   m_voxel_size;
 
+		float m_egovel_pct;
+		float m_scanmatch_pct;
+
 		unsigned num_threads() const { return m_num_threads; }
 		double   voxel_size()  const { return m_voxel_size;  }
 
@@ -87,7 +92,7 @@ namespace upo_gaussians {
 			Pose const& match_pose,
 			Vec<6> const& match_covdiag
 		) {
-			Strapdown::update_scanmatch(m_keyframe, m_keyframe_cov, match_pose, match_covdiag, m_match_6dof);
+			Strapdown::update_scanmatch(m_keyframe, m_keyframe_cov, match_pose, match_covdiag, m_match_6dof, m_scanmatch_pct);
 		}
 
 		void update_scanmatch(Pose const& match_pose) {

@@ -1,4 +1,5 @@
 #include <upo_gaussians/kalman_core.hpp>
+#include <boost/math/distributions/chi_squared.hpp>
 #include <iostream>
 
 namespace upo_gaussians {
@@ -71,11 +72,23 @@ void Strapdown::update_common(
 	const char* name,
 	Vec<N> const& residual,
 	RType const& R,
-	Mat<N,CovTotal> const& H
+	Mat<N,CovTotal> const& H,
+	double outlier_percentile
 )
 {
-	auto SinvT = (H*m_cov*H.transpose() + as_dense(R)).transpose().ldlt();
-	auto K = SinvT.solve((m_cov*H.transpose()).transpose()).transpose().eval();
+	auto Sinv = (H*m_cov*H.transpose() + as_dense(R)).ldlt();
+
+	if (outlier_percentile > 0.0) {
+		double gamma = residual.transpose() * Sinv.solve(residual);
+		double gamma_thresh = boost::math::quantile(boost::math::chi_squared{N}, 1.0 - outlier_percentile);
+
+		if (gamma >= gamma_thresh) {
+			std::cout << " [EKF] " << name << " update rejected, gamma=" << gamma << " >= " << gamma_thresh << std::endl;
+			return;
+		}
+	}
+
+	auto K = Sinv.solve((m_cov*H.transpose()).transpose()).transpose().eval();
 	auto L = (Cov::Identity() - K*H).eval();
 
 	auto gain = (K*residual).eval();
@@ -104,7 +117,8 @@ void Strapdown::update_egovel(
 	Vec<3> const& egovel,
 	Mat<3> const& egovel_cov,
 	Vec<3> const& angvel,
-	Pose   const& radar_to_imu
+	Pose   const& radar_to_imu,
+	double outlier_percentile
 )
 {
 	auto Cwb = m_attitude.conjugate().matrix();
@@ -117,7 +131,7 @@ void Strapdown::update_egovel(
 	H.block(0,GyrBias,3,3) = Cbr*skewsym(radar_to_imu.translation());
 	H.block(0,AttError,3,3) = Cbr*Cwb*skewsym(velocity());
 
-	update_common("egovel", (egovel - pred_egovel).eval(), egovel_cov, H);
+	update_common("egovel", (egovel - pred_egovel).eval(), egovel_cov, H, outlier_percentile);
 }
 
 void Strapdown::update_scanmatch(
@@ -125,7 +139,8 @@ void Strapdown::update_scanmatch(
 	Mat<6> const& kf_cov,
 	Pose const& match_pose,
 	Vec<6> const& match_covdiag,
-	bool full_6dof
+	bool full_6dof,
+	double outlier_percentile
 )
 {
 	Pose pred_pose = kf_pose.inverse() * pose();
@@ -142,7 +157,7 @@ void Strapdown::update_scanmatch(
 	Mat<6> R = kf_cov + match_covdiag.asDiagonal().toDenseMatrix();
 
 	if (full_6dof) {
-		update_common("scanmatch_6dof", residual, R, H);
+		update_common("scanmatch_6dof", residual, R, H, outlier_percentile);
 	} else {
 		Mat<3,6> Hc;
 		Hc.setZero();
@@ -152,7 +167,7 @@ void Strapdown::update_scanmatch(
 		Mat<3> newR = Hc*R*Hc.transpose();
 		Mat<3,CovTotal> newH = Hc*H;
 
-		update_common("scanmatch_3dof", newresidual, newR, newH);
+		update_common("scanmatch_3dof", newresidual, newR, newH, outlier_percentile);
 	}
 }
 

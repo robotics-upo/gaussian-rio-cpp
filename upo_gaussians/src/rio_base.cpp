@@ -18,7 +18,9 @@ RioBase::RioBase(
 	m_match_rot_cov{p.match_rot_std*p.match_rot_std},
 	m_match_6dof{p.match_6dof},
 	m_num_threads{p.num_threads},
-	m_voxel_size{p.voxel_size}
+	m_voxel_size{p.voxel_size},
+	m_egovel_pct{p.egovel_pct},
+	m_scanmatch_pct{p.scanmatch_pct}
 {
 }
 
@@ -82,7 +84,7 @@ inline RadarCloud RioBase::process_egovel(RadarCloud const& cl, double time)
 	if (is_initial()) {
 		initialize(time, r.egovel, r.egovel_cov);
 	} else {
-		update_egovel(r.egovel, r.egovel_cov, m_angvel, m_radar_to_imu);
+		update_egovel(r.egovel, r.egovel_cov, m_angvel, m_radar_to_imu, m_egovel_pct);
 	}
 
 	return std::move(r.inliers);

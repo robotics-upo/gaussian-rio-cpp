@@ -10,6 +10,7 @@ endif()
 #find_package(Python COMPONENTS Interpreter Development)
 #find_package(pybind11 CONFIG REQUIRED)
 
+find_package(Boost REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(PCL 1.3 REQUIRED COMPONENTS common)
 find_package(OpenMP REQUIRED)
@@ -66,6 +67,7 @@ target_link_libraries(upo_gaussians PUBLIC
 )
 
 target_link_libraries(upo_gaussians PRIVATE
+	Boost::boost
 	OpenMP::OpenMP_CXX
 	Ceres::ceres
 	small_gicp::small_gicp
