@@ -6,13 +6,18 @@ namespace upo_gaussians {
 
 Strapdown::Strapdown(
 	InitParams const& p,
+	Pose const& radar_to_imu,
 	bool want_yaw_gyro_bias
 )
 {
 	int z = want_yaw_gyro_bias ? 3 : 2;
+	m_state.segment<3>(R2ITran) = radar_to_imu.translation();
+	m_r2i_rot = radar_to_imu.rotation();
+	m_cov.block(R2ITran, R2ITran, 3, 3).diagonal().fill(p.r2i_tran_std*p.r2i_tran_std);
 	m_cov.block(AccBias, AccBias, 3, 3).diagonal().fill(p.accel_bias_std*p.accel_bias_std);
 	m_cov.block(GyrBias, GyrBias, z, z).diagonal().fill(p.gyro_bias_std*p.gyro_bias_std);
 	m_cov.block(AttError, AttError, 2, 2).diagonal().fill(p.rp_att_std*p.rp_att_std);
+	m_cov.block(R2IRotErr, R2IRotErr, 3, 3).diagonal().fill(p.r2i_rot_std*p.r2i_rot_std);
 }
 
 void Strapdown::init_vel(
@@ -97,39 +102,43 @@ void Strapdown::update_common(
 
 	// ESKF reset
 	auto qerr = so3_exp(gain.template segment<3>(AttError));
+	auto r2iqerr = so3_exp(gain.template segment<3>(R2IRotErr));
 	Mat<CovTotal> G;
 	G.setIdentity();
 	G.block(AttError,AttError,3,3) = qerr.matrix();
+	G.block(R2IRotErr,R2IRotErr,3,3) = r2iqerr.matrix();
 	m_attitude = qerr*m_attitude;
 	m_attitude.normalize(); // renormalize to avoid rounding errors
+	m_r2i_rot = r2iqerr*m_r2i_rot;
+	m_r2i_rot.normalize();
 	m_cov = G*m_cov*G.transpose();
 }
 
 Vec<3> Strapdown::calc_egovel(
-	Vec<3> const& angvel,
-	Pose const& radar_to_imu
+	Vec<3> const& angvel
 ) const
 {
-	return radar_to_imu.rotation().transpose()*(angvel.cross(radar_to_imu.translation()) + m_attitude.conjugate()*velocity());
+	return r2i_rot().conjugate()*(angvel.cross(r2i_tran()) + m_attitude.conjugate()*velocity());
 }
 
 void Strapdown::update_egovel(
 	Vec<3> const& egovel,
 	Mat<3> const& egovel_cov,
 	Vec<3> const& angvel,
-	Pose   const& radar_to_imu,
 	double outlier_percentile
 )
 {
 	auto Cwb = m_attitude.conjugate().matrix();
-	auto Cbr = radar_to_imu.rotation().transpose();
-	auto pred_egovel = calc_egovel(angvel, radar_to_imu);
+	auto Cbr = r2i_rot().conjugate().toRotationMatrix();
+	auto pred_egovel = calc_egovel(angvel);
 
 	Mat<3,CovTotal> H;
 	H.setZero();
 	H.block(0,Vel,3,3) = Cbr*Cwb;
-	H.block(0,GyrBias,3,3) = Cbr*skewsym(radar_to_imu.translation());
+	H.block(0,R2ITran,3,3) = Cbr*skewsym(angvel);
+	H.block(0,GyrBias,3,3) = Cbr*skewsym(r2i_tran());
 	H.block(0,AttError,3,3) = Cbr*Cwb*skewsym(velocity());
+	H.block(0,R2IRotErr,3,3) = Cbr*skewsym(angvel.cross(r2i_tran()) + m_attitude.conjugate()*velocity());
 
 	update_common("egovel", (egovel - pred_egovel).eval(), egovel_cov, H, outlier_percentile);
 }

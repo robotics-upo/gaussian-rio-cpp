@@ -11,9 +11,8 @@ namespace upo_gaussians {
 RioBase::RioBase(
 	Keyframer keyframer,
 	InitParams const& p
-) : Strapdown{p, true},
+) : Strapdown{p, p.radar_to_imu, true},
 	m_prop_params{p},
-	m_radar_to_imu{p.radar_to_imu},
 	m_keyframer{std::move(keyframer)},
 	m_match_pos_cov{p.match_pos_std*p.match_pos_std},
 	m_match_rot_cov{p.match_rot_std*p.match_rot_std},
@@ -35,7 +34,7 @@ void RioBase::process(Input const& input)
 	auto cl = filter_radar_cloud(input.radar_scan);
 	cl = process_egovel(cl, input.radar_time);
 
-	pcl::transformPointCloud(cl, cl, m_radar_to_imu.matrix().cast<float>());
+	pcl::transformPointCloud(cl, cl, r2i_pose().matrix().cast<float>());
 
 	if (m_voxel_size > 0.0) {
 		if (m_deterministic) {
@@ -90,7 +89,7 @@ inline RadarCloud RioBase::process_egovel(RadarCloud const& cl, double time)
 	if (is_initial()) {
 		initialize(time, r.egovel, r.egovel_cov);
 	} else {
-		update_egovel(r.egovel, r.egovel_cov, m_angvel, m_radar_to_imu, m_egovel_pct);
+		update_egovel(r.egovel, r.egovel_cov, m_angvel, m_egovel_pct);
 	}
 
 	return std::move(r.inliers);

@@ -48,13 +48,12 @@ namespace upo_gaussians {
 		double match_time() const { return time() - m_match_time; }
 		Pose kf_pose() const { return m_keyframe.inverse()*pose(); }
 
-		Vec<3> egovel() const { return calc_egovel(m_angvel, m_radar_to_imu); }
+		Vec<3> egovel() const { return calc_egovel(m_angvel); }
 
 		void process(Input const& input);
 
 	protected:
 		PropParams m_prop_params;
-		Pose m_radar_to_imu;
 
 		double m_ref_time = -1.0;
 		double m_imu_time = -1.0;

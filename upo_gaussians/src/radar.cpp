@@ -212,7 +212,7 @@ bool calc_radar_egovel(
 
 	ret.egovel = -best_vel.cast<double>(); // flip sign in order to refer to ourselves moving
 	ret.egovel_cov = HtH.cast<double>().inverse();
-	ret.egovel_cov *= best_err.dot(best_err) / (num_inliers + 3);
+	ret.egovel_cov *= best_err.dot(best_err) / (num_inliers - 3);
 
 	return true;
 }

@@ -8,6 +8,8 @@ namespace upo_gaussians {
 
 		struct StrapdownInitParams {
 			double rp_att_std     = 15*M_TAU/360;
+			double r2i_tran_std   = 0.01;
+			double r2i_rot_std    = 0.25*M_TAU/360;
 			double accel_bias_std = 0.02;
 			double gyro_bias_std  = 0.00035*M_TAU/360;
 		};
@@ -30,12 +32,14 @@ namespace upo_gaussians {
 		enum Fields {
 			Pos        = 0,
 			Vel        = Pos+3,
-			AccBias    = Vel+3,
+			R2ITran    = Vel+3,
+			AccBias    = R2ITran+3,
 			GyrBias    = AccBias+3,
 			StateTotal = GyrBias+3,
 
 			AttError   = StateTotal,
-			CovTotal   = AttError+3,
+			R2IRotErr  = AttError+3,
+			CovTotal   = R2IRotErr+3,
 		};
 
 		enum Noises {
@@ -51,6 +55,9 @@ namespace upo_gaussians {
 		Vec<3> position()   const { return m_state.segment<3>(Pos);           }
 		Quat   attitude()   const { return m_attitude;                        }
 		Pose   pose()       const { return make_pose(attitude(), position()); }
+		Vec<3> r2i_tran()   const { return m_state.segment<3>(R2ITran);       }
+		Quat   r2i_rot()    const { return m_r2i_rot;                         }
+		Pose   r2i_pose()   const { return make_pose(r2i_rot(), r2i_tran());  }
 		Vec<3> velocity()   const { return m_state.segment<3>(Vel);           }
 		Vec<3> accel_bias() const { return m_state.segment<3>(AccBias);       }
 		Vec<3> gyro_bias()  const { return m_state.segment<3>(GyrBias);       }
@@ -58,6 +65,7 @@ namespace upo_gaussians {
 
 		Strapdown(
 			InitParams const& p = InitParams{},
+			Pose const& radar_to_imu = Pose::Identity(),
 			bool want_yaw_gyro_bias = false
 		);
 
@@ -76,15 +84,13 @@ namespace upo_gaussians {
 		);
 
 		Vec<3> calc_egovel(
-			Vec<3> const& angvel = Vec<3>::Zero(),
-			Pose const& radar_to_imu = Pose::Identity()
+			Vec<3> const& angvel = Vec<3>::Zero()
 		) const;
 
 		void update_egovel(
 			Vec<3> const& egovel,
 			Mat<3> const& egovel_cov,
 			Vec<3> const& angvel = Vec<3>::Zero(),
-			Pose   const& radar_to_imu = Pose::Identity(),
 			double outlier_percentile = 0.05
 		);
 
@@ -103,6 +109,7 @@ namespace upo_gaussians {
 
 		State m_state    = State::Zero();
 		Quat  m_attitude = Quat::Identity();
+		Quat  m_r2i_rot  = Quat::Identity();
 		Cov   m_cov      = Cov::Zero();
 
 		auto padded_state() const {
