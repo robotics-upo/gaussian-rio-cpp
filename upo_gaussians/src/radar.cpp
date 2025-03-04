@@ -24,6 +24,10 @@ namespace {
 			return false;
 		}
 
+		if (p.still_std < 0.0) {
+			return true;
+		}
+
 		ret.egovel.setZero();
 		ret.egovel_cov.setZero();
 		ret.egovel_cov.diagonal().fill((double)p.still_std*p.still_std);
@@ -168,7 +172,7 @@ bool calc_radar_egovel(
 )
 {
 	if (median_check(ret, in_cloud, p)) {
-		return true;
+		return p.still_std >= 0.0;
 	}
 
 	DynMatf dirdops{ in_cloud.size(), 4 };
