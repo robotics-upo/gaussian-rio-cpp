@@ -19,6 +19,7 @@ namespace upo_gaussians {
 			uint8_t  num_threads   = 4;                ///< Number of threads used for processing (hint)
 			bool     deterministic = true;             ///< Attempts to use deterministic algorithms, may be slower (hint)
 			bool     match_6dof    = false;            ///< true for 6-DoF scan matching, false for 3-DoF (x/y/yaw)
+			bool     filter_cloud  = false;            ///< Whether to filter the radar cloud before processing
 		};
 
 		struct RioInput {
@@ -70,6 +71,7 @@ namespace upo_gaussians {
 		double m_match_rot_cov;
 		bool   m_deterministic;
 		bool   m_match_6dof;
+		bool   m_filter_cloud;
 
 		unsigned m_num_threads;
 		double   m_voxel_size;

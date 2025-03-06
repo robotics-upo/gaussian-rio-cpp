@@ -18,6 +18,7 @@ RioBase::RioBase(
 	m_match_rot_cov{p.match_rot_std*p.match_rot_std},
 	m_deterministic{p.deterministic},
 	m_match_6dof{p.match_6dof},
+	m_filter_cloud{p.filter_cloud},
 	m_num_threads{p.num_threads},
 	m_voxel_size{p.voxel_size},
 	m_egovel_pct{p.egovel_pct},
@@ -31,8 +32,12 @@ void RioBase::process(Input const& input)
 		process_imu(input.imu_data);
 	}
 
-	auto cl = filter_radar_cloud(input.radar_scan);
-	cl = process_egovel(cl, input.radar_time);
+	RadarCloud cl;
+	if (m_filter_cloud) {
+		cl = filter_radar_cloud(input.radar_scan);
+	}
+
+	cl = process_egovel(m_filter_cloud ? cl : input.radar_scan, input.radar_time);
 
 	pcl::transformPointCloud(cl, cl, r2i_pose().matrix().cast<float>());
 
