@@ -118,7 +118,7 @@ class GaussianModelMaker final : private ceres::EvaluationCallback {
 		Eigen::Matrix<double, 3, Eigen::Dynamic> g_invnormscales =
 			(-(m_model.log_scales.rowwise() - m_model.log_scales.colwise().mean())).array().exp().matrix();
 
-		#pragma omp parallel for reduction(+:sizes[:m_group_sizes.size()]) num_threads(m_num_threads)
+		//#pragma omp parallel for reduction(+:sizes[:m_group_sizes.size()]) num_threads(m_num_threads)
 		for (Eigen::Index i = 0; i < m_cloud.cols(); i ++) {
 			ssize_t best_g = -1;
 			double best_sqdist = 0.0;
