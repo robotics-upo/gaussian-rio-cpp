@@ -8,8 +8,8 @@ namespace upo_gaussians {
 
 		struct StrapdownInitParams {
 			double rp_att_std     = 15*M_TAU/360;
-			double r2i_tran_std   = 0.01;
-			double r2i_rot_std    = 0.25*M_TAU/360;
+			double r2i_tran_std   = 0.05;
+			double r2i_rot_std    = 1.0*M_TAU/360;
 			double accel_bias_std = 0.02;
 			double gyro_bias_std  = 0.00035*M_TAU/360;
 		};
