@@ -9,17 +9,21 @@ namespace upo_gaussians {
 
 	namespace detail {
 
-		struct RioBaseInitParams : StrapdownInitParams, StrapdownPropParams {
+		struct RioBaseInitParams : StrapdownPropParams {
 			Pose     radar_to_imu  = Pose::Identity(); ///< Radar position/attitude with respect to body/IMU
+			double   max_init_time = 3.0;              ///< Maximum initialization time [s]
+			double   r2i_tran_std  = 0.05;             ///< Radar-to-IMU position uncertainty [m]
+			double   r2i_rot_std   = 1.0*M_TAU/360;    ///< Radar-to-IMU rotation uncertainty [m]
 			double   voxel_size    = 0.25;             ///< Voxel grid resolution used for downsampling (0=disable) [m]
-			double   match_pos_std = 1.0f;             ///< Default scan matching position uncertainty [m]
-			double   match_rot_std = 6.0*M_TAU/360.0;  ///< Default scan matching rotation uncertainty [rad]
+			double   match_pos_std = 0.5f;             ///< Default scan matching position uncertainty [m]
+			double   match_rot_std = 2.0f*M_TAU/360.0; ///< Default scan matching rotation uncertainty [rad]
 			float    egovel_pct    = 0.05f;            ///< Egovelocity outlier percentile for EKF update rejection filter [0,1)
 			float    scanmatch_pct = 0.1f;             ///< Scan matching outlier percentile for EKF update rejection filter [0,1)
 			uint8_t  num_threads   = 4;                ///< Number of threads used for processing (hint)
 			bool     deterministic = true;             ///< Attempts to use deterministic algorithms, may be slower (hint)
 			bool     match_6dof    = false;            ///< true for 6-DoF scan matching, false for 3-DoF (x/y/yaw)
 			bool     filter_cloud  = false;            ///< Whether to filter the radar cloud before processing
+			StrapdownInitImuParams init_imu_params;    ///< IMU-based initialization parameters
 		};
 
 		struct RioInput {
@@ -32,6 +36,7 @@ namespace upo_gaussians {
 
 	struct RioBase : public Strapdown {
 
+		using InitImuParams = detail::StrapdownInitImuParams;
 		using InitParams = detail::RioBaseInitParams;
 		using Input      = detail::RioInput;
 		using Keyframer  = std::function<bool(RioBase const&)>;
@@ -41,7 +46,7 @@ namespace upo_gaussians {
 			InitParams const& p = InitParams{}
 		);
 
-		bool is_initial() const { return m_ref_time < 0.0; }
+		bool is_initial() const { return m_imu_time < 0.0; }
 		double time() const { return m_imu_time - m_ref_time; }
 
 		bool has_keyframe() const { return m_keyframe_time >= 0.0; }
@@ -55,14 +60,20 @@ namespace upo_gaussians {
 
 	protected:
 		PropParams m_prop_params;
+		InitImuParams m_init_imu_params;
 
+		double m_max_init_time;
 		double m_ref_time = -1.0;
 		double m_imu_time = -1.0;
-		Vec<2> m_imu_rp = Vec<2>::Zero();
+		double m_init_time = -1.0;
+		Vec<3> m_imu_init_accel = Vec<3>::Zero();
+		Vec<3> m_imu_init_gyro  = Vec<3>::Zero();
+		size_t m_imu_init_num   = 0;
 		Vec<3> m_angvel = Vec<3>::Zero();
 
 		Pose m_keyframe = Pose::Identity();
 		Mat<6> m_keyframe_cov{};
+		double m_initial_kf_time = -1.0;
 		double m_keyframe_time = -1.0;
 		double m_match_time = -1.0;
 		Keyframer m_keyframer;
@@ -83,13 +94,19 @@ namespace upo_gaussians {
 		bool   deterministic() const { return m_deterministic; }
 		double   voxel_size()  const { return m_voxel_size;  }
 
-		void initialize(
-			double time,
-			Vec<3> const& vel,
-			Mat<3> const& vel_cov
-		) {
-			m_ref_time = m_imu_time = time;
-			init_vel(vel, vel_cov);
+		void init_imu() {
+			m_imu_time = m_init_time;
+
+			if (m_imu_init_num) {
+				Strapdown::init_imu(
+					m_imu_init_accel/m_imu_init_num,
+					m_imu_init_gyro/m_imu_init_num,
+					m_prop_params.gravity,
+					m_init_imu_params
+				);
+			} else {
+				// TODO: figure out what to do with no still IMU samples!
+			}
 		}
 
 		void update_scanmatch(
@@ -109,9 +126,15 @@ namespace upo_gaussians {
 		virtual bool scan_matching(RadarCloud::Ptr) { return false; }
 		virtual bool process_keyframe(RadarCloud::Ptr) { return false; }
 
+		void commit_keyframe(double kf_time) {
+			m_keyframe      = pose();
+			m_keyframe_cov  = error_cov();
+			m_keyframe_time = m_match_time = kf_time;
+		}
+
 	private:
+		void process_imu_initial(ImuData::Bundle const& bundle);
 		void process_imu(ImuData::Bundle const& bundle);
-		RadarCloud process_egovel(RadarCloud const& cl, double time);
 	};
 
 }

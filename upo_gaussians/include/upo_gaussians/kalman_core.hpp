@@ -3,19 +3,19 @@
 
 namespace upo_gaussians {
 
+	static constexpr double EARTH_GRAVITY = 9.80511;
+
 	// Workaround for gcc/clang bug: https://stackoverflow.com/a/67637333
 	namespace detail {
 
-		struct StrapdownInitParams {
-			double rp_att_std     = 15*M_TAU/360;
-			double r2i_tran_std   = 0.05;
-			double r2i_rot_std    = 1.0*M_TAU/360;
-			double accel_bias_std = 0.02;
-			double gyro_bias_std  = 0.00035*M_TAU/360;
+		struct StrapdownInitImuParams {
+			double rp_att_std     = 3.0*M_TAU/360; ///< IMU-based roll/pitch initialization uncertainty [rad]
+			double accel_bias_std = 0.1;           ///< Initial accelerometer bias uncertainty [m/s^2]
+			double gyro_bias_std  = 0.5*M_TAU/360; ///< Initial gyroscope bias uncertainty [rad/s]
 		};
 
 		struct StrapdownPropParams {
-			double gravity          = 9.80511;
+			double gravity          = EARTH_GRAVITY;
 			double w_vel_std        = 0.1;
 			double w_att_std        = 0.005;
 			double w_accel_bias_std = 0.0;
@@ -26,7 +26,7 @@ namespace upo_gaussians {
 
 	struct Strapdown {
 
-		using InitParams = detail::StrapdownInitParams;
+		using InitImuParams = detail::StrapdownInitImuParams;
 		using PropParams = detail::StrapdownPropParams;
 
 		enum Fields {
@@ -63,15 +63,22 @@ namespace upo_gaussians {
 		Vec<3> gyro_bias()  const { return m_state.segment<3>(GyrBias);       }
 		Mat<6> error_cov() const;
 
-		Strapdown(
-			InitParams const& p = InitParams{},
-			Pose const& radar_to_imu = Pose::Identity(),
-			bool want_yaw_gyro_bias = false
+		void init_r2i(
+			Pose const& radar_to_imu,
+			double r2i_tran_std,
+			double r2i_rot_std
 		);
 
 		void init_vel(
-			Vec<3> const& vel,
-			Mat<3> const& vel_cov
+			Vec<3> const& vel = Vec<3>::Zero(),
+			double vel_std = 0.02
+		);
+
+		void init_imu(
+			Vec<3> const& mean_accel,
+			Vec<3> const& mean_gyro,
+			double gravity = EARTH_GRAVITY,
+			InitImuParams const& p = InitImuParams{}
 		);
 
 		void propagate_imu(

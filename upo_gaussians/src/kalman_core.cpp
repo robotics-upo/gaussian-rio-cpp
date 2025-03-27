@@ -4,29 +4,48 @@
 
 namespace upo_gaussians {
 
-Strapdown::Strapdown(
-	InitParams const& p,
+void Strapdown::init_r2i(
 	Pose const& radar_to_imu,
-	bool want_yaw_gyro_bias
+	double r2i_tran_std,
+	double r2i_rot_std
 )
 {
-	int z = want_yaw_gyro_bias ? 3 : 2;
 	m_state.segment<3>(R2ITran) = radar_to_imu.translation();
 	m_r2i_rot = radar_to_imu.rotation();
-	m_cov.block(R2ITran, R2ITran, 3, 3).diagonal().fill(p.r2i_tran_std*p.r2i_tran_std);
-	m_cov.block(AccBias, AccBias, 3, 3).diagonal().fill(p.accel_bias_std*p.accel_bias_std);
-	m_cov.block(GyrBias, GyrBias, z, z).diagonal().fill(p.gyro_bias_std*p.gyro_bias_std);
-	m_cov.block(AttError, AttError, 2, 2).diagonal().fill(p.rp_att_std*p.rp_att_std);
-	m_cov.block(R2IRotErr, R2IRotErr, 3, 3).diagonal().fill(p.r2i_rot_std*p.r2i_rot_std);
+	m_cov.block(R2ITran, R2ITran, 3, 3).diagonal().fill(r2i_tran_std*r2i_tran_std);
+	m_cov.block(R2IRotErr, R2IRotErr, 3, 3).diagonal().fill(r2i_rot_std*r2i_rot_std);
 }
 
 void Strapdown::init_vel(
 	Vec<3> const& vel,
-	Mat<3> const& vel_cov
+	double vel_std
 )
 {
 	m_state.segment<3>(Vel) = vel;
-	m_cov.block(Vel, Vel, 3, 3) = vel_cov;
+	m_cov.block(Vel, Vel, 3, 3).diagonal().fill(vel_std*vel_std);
+}
+
+void Strapdown::init_imu(
+	Vec<3> const& mean_accel,
+	Vec<3> const& mean_gyro,
+	double gravity,
+	InitImuParams const& p
+)
+{
+	// Directly initialize attitude roll/pitch using accelerometer (which should read -gravity)
+	m_attitude = Quat::FromTwoVectors(mean_accel, Vec<3>{0.0, 0.0, gravity});
+	m_cov.block(AttError, AttError, 2, 2).diagonal().fill(p.rp_att_std*p.rp_att_std);
+
+	// Directly initialize gyroscope bias using gyroscope (which should read 0)
+	m_state.segment<3>(GyrBias) = mean_gyro;
+	m_cov.block(GyrBias, GyrBias, 3, 3).diagonal().fill(p.gyro_bias_std*p.gyro_bias_std);
+
+	// Estimate initial accelerometer bias using discrepancies in the measured gravity
+	auto R = m_attitude.matrix();
+	double gdiff = mean_accel.norm() - gravity;
+	m_state.segment<3>(AccBias) = R.transpose()*Vec<3>{0.0, 0.0, gdiff};
+	//p.accel_bias_std*p.accel_bias_std
+	m_cov.block(AccBias, AccBias, 3, 3) = R.transpose()*Vec<3>{0.0, 0.0, gdiff*gdiff}.asDiagonal()*R;
 }
 
 void Strapdown::propagate_imu(

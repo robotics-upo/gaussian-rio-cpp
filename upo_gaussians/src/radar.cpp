@@ -165,14 +165,14 @@ RadarCloud filter_radar_cloud(
 	return out;
 }
 
-bool calc_radar_egovel(
+EgoVelState calc_radar_egovel(
 	EgoVelResult& ret,
 	RadarCloud const& in_cloud,
 	EgoVelParams const& p
 )
 {
 	if (median_check(ret, in_cloud, p)) {
-		return p.still_std >= 0.0;
+		return EgoVelState::Still;
 	}
 
 	DynMatf dirdops{ in_cloud.size(), 4 };
@@ -186,7 +186,7 @@ bool calc_radar_egovel(
 	DynVecf best_err;
 	size_t num_inliers = solve_egovel_ransac(best_vel, best_err, dirdops, p);
 	if (!num_inliers) {
-		return false;
+		return EgoVelState::Fail;
 	}
 
 	DynMatf inlier_dirdops;
@@ -207,7 +207,7 @@ bool calc_radar_egovel(
 
 	if (!solve_egovel_lsq(best_vel, inlier_dirdops)) {
 		std::cerr << "  !! egovel lsq recalc fail" << std::endl;
-		return false;
+		return EgoVelState::Fail;
 	}
 
 	auto inlier_dirs = inlier_dirdops.block(0, 0, num_inliers, 3);
@@ -218,7 +218,7 @@ bool calc_radar_egovel(
 	ret.egovel_cov = HtH.cast<double>().inverse();
 	ret.egovel_cov *= best_err.dot(best_err) / (num_inliers - 3);
 
-	return true;
+	return EgoVelState::Ok;
 }
 
 }

@@ -48,13 +48,19 @@ namespace upo_gaussians {
 		}
 	};
 
+	enum class EgoVelState {
+		Fail  = 0,
+		Still = 1,
+		Ok    = 2,
+	};
+
 	struct EgoVelResult {
 		Vec<3> egovel;
 		Mat<3> egovel_cov;
 		RadarCloud inliers;
 	};
 
-	bool calc_radar_egovel(
+	EgoVelState calc_radar_egovel(
 		EgoVelResult& ret,
 		RadarCloud const& in_cloud,
 		EgoVelParams const& p = EgoVelParams{}
