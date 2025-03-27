@@ -57,7 +57,7 @@ bool RioGaussian::process_keyframe(RadarCloud::Ptr cl)
 {
 	detail::GaussianFitParams p;
 
-	p.num_gaussians = (cl->size() + cl->size()/2) / m_gaussian_sz;
+	p.num_gaussians = (2*cl->size() + 1) / (2*m_gaussian_sz);
 	p.num_threads = num_threads();
 	//p.verbose = true;
 
