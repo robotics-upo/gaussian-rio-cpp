@@ -54,10 +54,10 @@ std::pair<size_t,double> IcgContext::matchup(float max_mahal)
 	cudaDeviceSynchronize();
 
 	size_t best_particle = 0;
-	float best_sqmahal = 0.0f;
+	double best_sqmahal = 0.0;
 
 	for (uint32_t i = 0; i < m_numParticles; i ++) {
-		MatchOut out = { 0.0f, 0 };
+		MatchOutd out = { 0.0, 0 };
 		for (size_t j = 0; j < m_numBlocks; j ++) {
 			auto& in = sr_matchOut()[j + m_numBlocks*i];
 			out.sqmahal += in.sqmahal;

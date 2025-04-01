@@ -17,7 +17,7 @@ __global__ void icgMatchupP2G_Impl(
 	Vecf<4> const* in_g_invscale,
 	Quatf const* in_g_invrot,
 	int32_t* out_matchups,
-	MatchOut* out_grid_matchout
+	MatchOutf* out_grid_matchout
 )
 {
 	auto block_idx = blockIdx.x + gridDim.x * blockIdx.y;

@@ -4,10 +4,14 @@
 
 namespace upo_gaussians::detail {
 
+template <typename T>
 struct MatchOut {
-	float sqmahal;
+	T sqmahal;
 	uint32_t matches;
 };
+
+using MatchOutf = MatchOut<float>;
+using MatchOutd = MatchOut<double>;
 
 template <typename Scalar>
 struct SPMat3 {
@@ -71,7 +75,7 @@ class IcgContext {
 	GpuArray<Quatf>   m_T_rot;
 
 	union SRTemp {
-		MatchOut   match_out;
+		MatchOutf  match_out;
 		symposmat3 pmat;
 		Matf<12,3> rotopt;
 	};
