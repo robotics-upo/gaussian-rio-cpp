@@ -17,9 +17,9 @@ namespace upo_gaussians {
 
 		struct GaussianMatchParams {
 			uint32_t max_iters       = 20;
-			uint32_t patience        = 5;
 			float    mahal_thresh    = 4.0f;
-			float    min_improvement = 0.0f;
+			double   min_change_tran = 1.0e-3;
+			double   min_change_rot  = 0.1*M_TAU/360.0;
 		};
 
 		struct GaussianMatchResults {

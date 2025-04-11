@@ -67,6 +67,8 @@ class IcgContext {
 	uint32_t m_numParticles;
 	uint32_t m_numBlocks;
 
+	uint64_t m_convergedParticles = 0;
+
 	GpuArray<Vecf<4>> m_points;
 	GpuArray<Vecf<4>> m_g_centers;
 	GpuArray<Vecf<4>> m_g_invscale;
@@ -76,25 +78,22 @@ class IcgContext {
 
 	union SRTemp {
 		MatchOutf  match_out;
-		symposmat3 pmat;
-		Matf<12,3> rotopt;
 	};
 
 	// Temporary buffers (GPU/CPU shared memory)
 	GpuArray<int32_t> m_matchups;
-	GpuArray<MultiVecf<4,2>> m_xy0;
 	GpuArray<SRTemp> m_sum_reduce_temp;
-	GpuArray<MultiVecf<4,2>> m_sum_reduce_temp2;
 
 	auto* sr_matchOut() { return &m_sum_reduce_temp[0].match_out; }
-	auto* sr_pmat()     { return &m_sum_reduce_temp[0].pmat;      }
-	auto* sr_rotopt()   { return &m_sum_reduce_temp[0].rotopt;    }
-	auto* sr_xy0()      { return &m_sum_reduce_temp2[0];          }
 
 	// CUDA kernels
 	void cuda_matchupP2G(float max_mahal);
 	void cuda_sumReducePxy();
 	void cuda_sumReduceRotOpt();
+
+	Pose particle_cur(size_t i) const {
+		return make_pose(m_T_rot[i].cast<double>(), m_T_tran[i].segment<3>(0).cast<double>());
+	}
 
 public:
 	IcgContext(
@@ -104,12 +103,20 @@ public:
 		PoseArray const& particles
 	);
 
+	uint32_t num_particles() const {
+		return m_numParticles;
+	}
+
+	uint32_t num_converged_particles() const {
+		return __builtin_popcountll(m_convergedParticles);
+	}
+
 	Pose particle(size_t i) const {
-		return make_pose(m_T_rot[i].cast<double>(), m_T_tran[i].segment<3>(0).cast<double>())*m_initPose;
+		return particle_cur(i)*m_initPose;
 	}
 
 	std::pair<size_t,double> matchup(float max_mahal);
-	void iteration();
+	void iteration(double min_change_rot, double min_change_tran);
 };
 
 }
