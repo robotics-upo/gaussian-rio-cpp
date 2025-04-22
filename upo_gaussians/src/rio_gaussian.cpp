@@ -23,6 +23,7 @@ inline PoseArray RioGaussian::particle_swarm()
 	pa.resize(m_num_particles);
 	pa(0) = Pose::Identity();
 
+	std::mt19937 m_rng{3135134162};
 	std::normal_distribution rng;
 	for (size_t i = 1; i < m_num_particles; i ++) {
 		Vec<3> tran { rng(m_rng), rng(m_rng), rng(m_rng) };
@@ -38,14 +39,13 @@ bool RioGaussian::scan_matching(RadarCloud::Ptr cl)
 	detail::GaussianMatchResults ret;
 	bool ok = m_model.match(ret, *cl, kf_pose(), particle_swarm());
 	if (!ok) {
-		std::cerr << "  [RioGaussian] Warning: Failed to improve score" << std::endl;
+		std::cerr << "  [RioGaussian] Warning: Not converged" << std::endl;
 		return false;
 	}
 
 	auto L = ret.score - m_basemahal;
-	std::cout << "RioGaussian scanmatch loss " << L << std::endl;
 	if (L >= m_match_thresh) {
-		std::cerr << "  [RioGaussian] Warning: Not converged" << std::endl;
+		std::cerr << "  [RioGaussian] Warning: Loss above threshold: " << L << std::endl;
 		return false;
 	}
 

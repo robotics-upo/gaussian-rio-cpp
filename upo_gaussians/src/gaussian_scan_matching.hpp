@@ -111,6 +111,10 @@ public:
 		return __builtin_popcountll(m_convergedParticles);
 	}
 
+	bool is_converged(size_t i) const {
+		return (m_convergedParticles & (UINT64_C(1) << i)) != 0;
+	}
+
 	Pose particle(size_t i) const {
 		return particle_cur(i)*m_initPose;
 	}

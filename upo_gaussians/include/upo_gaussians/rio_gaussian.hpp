@@ -35,8 +35,6 @@ namespace upo_gaussians {
 		bool process_keyframe(RadarCloud::Ptr cl);
 
 	private:
-		std::mt19937 m_rng{3135134162};
-
 		size_t m_gaussian_sz;
 		size_t m_num_particles;
 		double m_match_thresh;

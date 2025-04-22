@@ -70,7 +70,7 @@ std::pair<size_t,double> IcgContext::matchup(float max_mahal)
 void IcgContext::iteration(double min_change_rot, double min_change_tran)
 {
 	for (size_t i = 0; i < m_numParticles; i ++) {
-		if (m_convergedParticles & (UINT64_C(1) << i)) {
+		if (is_converged(i)) {
 			continue;
 		}
 
@@ -151,7 +151,7 @@ bool GaussianModel::match(
 	} while (iter < p.max_iters && icg.num_converged_particles() < icg.num_particles());
 
 	auto [ best_particle, best_score ] = best_so_far;
-	if (best_score >= out.score) {
+	if (!icg.is_converged(best_particle) || best_score >= out.score) {
 		return false;
 	}
 
