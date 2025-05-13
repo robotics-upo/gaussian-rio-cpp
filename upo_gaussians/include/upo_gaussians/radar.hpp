@@ -38,6 +38,7 @@ namespace upo_gaussians {
 		float    min_inlier_p  = 0.5f;
 		float    p_outlier     = 0.05f;
 		float    p_success     = 0.995f;
+		double   moving_std    = 0.1;
 
 		unsigned calc_num_iters() const {
 			if (num_iters) {

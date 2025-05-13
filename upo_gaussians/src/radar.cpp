@@ -218,6 +218,11 @@ EgoVelState calc_radar_egovel(
 	ret.egovel_cov = HtH.cast<double>().inverse();
 	ret.egovel_cov *= best_err.dot(best_err) / (num_inliers - 3);
 
+	double moving_cov = p.moving_std*p.moving_std;
+	ret.egovel_cov.diagonal().x() += moving_cov;
+	ret.egovel_cov.diagonal().y() += moving_cov;
+	ret.egovel_cov.diagonal().z() += moving_cov;
+
 	return EgoVelState::Ok;
 }
 
