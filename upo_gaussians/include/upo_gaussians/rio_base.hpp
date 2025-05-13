@@ -12,8 +12,8 @@ namespace upo_gaussians {
 		struct RioBaseInitParams : StrapdownPropParams {
 			Pose     radar_to_imu  = Pose::Identity(); ///< Radar position/attitude with respect to body/IMU
 			double   max_init_time = 3.0;              ///< Maximum initialization time [s]
-			double   r2i_tran_std  = 0.05;             ///< Radar-to-IMU position uncertainty [m]
-			double   r2i_rot_std   = 1.0*M_TAU/360;    ///< Radar-to-IMU rotation uncertainty [m]
+			double   r2i_tran_std  = 0.0;              ///< Radar-to-IMU position uncertainty [m] (was: 0.05)
+			double   r2i_rot_std   = 0.5*M_TAU/360;    ///< Radar-to-IMU rotation uncertainty [m] (was: 1.0)
 			double   voxel_size    = 0.25;             ///< Voxel grid resolution used for downsampling (0=disable) [m]
 			double   match_pos_std = 0.5f;             ///< Default scan matching position uncertainty [m]
 			double   match_rot_std = 2.0f*M_TAU/360.0; ///< Default scan matching rotation uncertainty [rad]
