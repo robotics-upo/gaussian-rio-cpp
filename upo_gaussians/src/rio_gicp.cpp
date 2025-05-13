@@ -1,9 +1,11 @@
 #include <upo_gaussians/rio_gicp.hpp>
 #include <iostream>
+#include <optional>
 
 #include <small_gicp/pcl/pcl_point_traits.hpp>
 #include <small_gicp/ann/kdtree.hpp>
 #include <small_gicp/ann/kdtree_omp.hpp>
+#include <small_gicp/ann/gaussian_voxelmap.hpp>
 #include <small_gicp/util/normal_estimation.hpp>
 #include <small_gicp/util/normal_estimation_omp.hpp>
 #include <small_gicp/factors/gicp_factor.hpp>
@@ -20,6 +22,7 @@ class RioGicp::Model final {
 	RadarCloud::Ptr m_cl;
 	std::vector<Eigen::Matrix4d> m_covs;
 	small_gicp::UnsafeKdTree<Model> m_kdtree;
+	std::optional<small_gicp::GaussianVoxelMap> m_voxelmodel;
 
 	struct DeferKdTreeBuilding {
 		template <typename KdTree, typename PointCloud>
@@ -38,7 +41,11 @@ class RioGicp::Model final {
 		reg.optimizer.max_iterations = m_parent.m_gicp_params.max_iters;
 		reg.optimizer.verbose = false;
 
-		return reg.align(*this, cl, m_kdtree, m_parent.kf_pose());
+		if (m_voxelmodel) {
+			return reg.align(*m_voxelmodel, cl, *m_voxelmodel, m_parent.kf_pose());
+		} else {
+			return reg.align(*this, cl, m_kdtree, m_parent.kf_pose());
+		}
 	}
 
 public:
@@ -58,6 +65,14 @@ public:
 	}
 
 	bool contains(RadarCloud const& cl) const { return m_cl.get() == &cl; }
+
+	void build_voxelmodel()
+	{
+		if (m_parent.m_gicp_params.vgicp_voxel > 0.0) {
+			m_voxelmodel.emplace(m_parent.m_gicp_params.vgicp_voxel);
+			m_voxelmodel->insert(*this);
+		}
+	}
 
 	small_gicp::RegistrationResult align(Model const& cl) const
 	{
@@ -133,6 +148,7 @@ bool RioGicp::process_keyframe(RadarCloud::Ptr cl)
 		m_model = std::make_unique<Model>(*this, std::move(cl));
 	}
 
+	m_model->build_voxelmodel();
 	return true;
 }
 

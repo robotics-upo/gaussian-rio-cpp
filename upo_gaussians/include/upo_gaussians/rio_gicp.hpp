@@ -11,6 +11,7 @@ namespace upo_gaussians {
 			double   max_corr_dist = 1.0;
 			double   tran_eps      = 1.0e-3;
 			double   rot_eps       = 0.1*M_TAU/360.0;
+			double   vgicp_voxel   = 0.0;
 		};
 
 		struct RioGicpInitParams : RioBaseInitParams {
