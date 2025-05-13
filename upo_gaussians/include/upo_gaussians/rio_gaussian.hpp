@@ -10,8 +10,8 @@ namespace upo_gaussians {
 			size_t gaussian_size = 20;
 			size_t num_particles = 4;
 			double match_thresh = 50.0;
-			double particle_std_xyz = 1.0;
-			double particle_std_rot = 6.0*M_TAU/360.0;
+			double particle_std_xyz = 0.5;
+			double particle_std_rot = 2.0*M_TAU/360.0;
 		};
 
 	}

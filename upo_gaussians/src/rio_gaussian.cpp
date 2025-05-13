@@ -46,7 +46,7 @@ bool RioGaussian::scan_matching(RadarCloud::Ptr cl)
 	auto L = ret.score - m_basemahal;
 	if (L >= m_match_thresh) {
 		std::cerr << "  [RioGaussian] Warning: Loss above threshold: " << L << std::endl;
-		return false;
+		//return false;
 	}
 
 	update_scanmatch(ret.pose);
@@ -66,13 +66,12 @@ bool RioGaussian::process_keyframe(RadarCloud::Ptr cl)
 	m_model.fit(*cl, p);
 
 	detail::GaussianMatchResults ret;
-	bool ok = m_model.match(ret, *cl);
-	m_basemahal = ret.score;
-	std::cout << "RioGaussian: baseline score is " << m_basemahal << std::endl;
-	if (ok) {
-		std::cout << "RioGaussian: transforming model to suit better score" << std::endl;
-		m_model.transform(ret.pose.inverse());
+	if (!m_model.match(ret, *cl)) {
+		std::cerr << "  [RioGaussian] Warning: Fitting returned bad model" << std::endl;
+		return false;
 	}
+
+	m_basemahal = ret.score;
 
 	return true;
 }

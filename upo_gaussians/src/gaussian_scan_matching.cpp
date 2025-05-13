@@ -54,7 +54,7 @@ std::pair<size_t,double> IcgContext::matchup(float max_mahal)
 		MatchOutd out = { 0.0, 0 };
 		for (size_t j = 0; j < m_numBlocks; j ++) {
 			auto& in = sr_matchOut()[j + m_numBlocks*i];
-			out.sqmahal += in.sqmahal;
+			out.sqmahal += sqrt(double(in.sqmahal));
 			out.matches += in.matches;
 		}
 
@@ -136,14 +136,11 @@ bool GaussianModel::match(
 )
 {
 	detail::IcgContext icg{cl, *this, init_pose, init_particles};
-	{
-		auto [ particle, score ] = icg.matchup(p.mahal_thresh);
-		out.pose = icg.particle(particle);
-		out.score = score;
-	}
-
 	size_t iter = 0;
 	std::pair<size_t, double> best_so_far;
+
+	icg.matchup(p.mahal_thresh);
+
 	do {
 		iter ++;
 		icg.iteration(p.min_change_rot, p.min_change_tran);
@@ -151,7 +148,7 @@ bool GaussianModel::match(
 	} while (iter < p.max_iters && icg.num_converged_particles() < icg.num_particles());
 
 	auto [ best_particle, best_score ] = best_so_far;
-	if (!icg.is_converged(best_particle) || best_score >= out.score) {
+	if (!icg.is_converged(best_particle)) {
 		return false;
 	}
 
