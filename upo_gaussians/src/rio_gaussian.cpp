@@ -13,6 +13,10 @@ RioGaussian::RioGaussian(
 	m_particle_std_xyz{p.particle_std_xyz},
 	m_particle_std_rot{p.particle_std_rot}
 {
+	const char* fnp = getenv("FORCE_NUM_PARTICLES");
+	if (fnp) {
+		m_num_particles = atoi(fnp);
+	}
 }
 
 RioGaussian::~RioGaussian() = default;
@@ -60,6 +64,11 @@ bool RioGaussian::process_keyframe(RadarCloud::Ptr cl)
 	p.num_gaussians = (2*cl->size() + 1) / (2*m_gaussian_sz);
 	p.num_threads = num_threads();
 	//p.verbose = true;
+
+	const char* fng = getenv("FORCE_NUM_GAUSSIANS");
+	if (fng) {
+		p.num_gaussians = atoi(fng);
+	}
 
 	std::cout << "RioGaussian: modeling " << p.num_gaussians << " gaussians with " << p.num_threads << " threads" << std::endl;
 
