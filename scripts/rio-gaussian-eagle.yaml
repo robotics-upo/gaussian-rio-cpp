@@ -1,0 +1,3 @@
+method: gaussian
+gaussian:
+  gaussian_size: 20

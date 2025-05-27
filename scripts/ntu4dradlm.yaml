@@ -1,0 +1,44 @@
+dataset:
+  path: /mnt/data/ntu4dradlm
+sensors:
+  vectornav:
+    topic: /vectornav/imu
+    convention: NED
+    pos: [0.0, 0.0, 0.0]
+    rot: [1.0, 0.0, 0.0, 0.0]
+    accel_std:      0.0022281160035059417
+    accel_bias_std: 0.00011782392708033614
+    gyro_std:       0.00011667951042710442
+    gyro_bias_std:  2.616129872371749e-06
+  oculii_eagle:
+    topic: /radar_enhanced_pcl
+    convention: NWU
+    pos: [-0.3176955976234, 0.13761019052125, -0.05898352725152] # for vectornav (official)
+    rot: [1.0, 0.0, 0.0, 0.0]
+    apply_filter: true
+    fields:
+      power: Power
+      doppler: Doppler
+sequences:
+  - name: cp
+    gt: cp/gt_odom.txt
+    bags:
+      - cp/cp_2022-02-26.bag
+  - name: nyl
+    gt: nyl/gt_odom.txt
+    bags:
+      - nyl/nyl_2022-02-26_0.bag
+      - nyl/nyl_2022-02-26_1.bag
+  - name: loop2
+    gt: loop2/gt_odom.txt
+    bags:
+      - loop2/loop2_2022-06-03_0.bag
+      - loop2/loop2_2022-06-03_1.bag
+      - loop2/loop2_2022-06-03_2.bag
+      - loop2/loop2_2022-06-03_3.bag
+  - name: loop3
+    gt: loop3/gt_odom.txt
+    bags:
+      - loop3/loop3_2022-06-03_0.bag
+      - loop3/loop3_2022-06-03_1.bag
+      - loop3/loop3_2022-06-03_2.bag

@@ -1,0 +1,50 @@
+dataset:
+  path: /mnt/data/snail-radar
+sensors:
+  mti3dk:
+    topic: /mti3dk/imu
+    convention: NWU
+    pos: [0.0, 0.0, -0.18]
+    rot: [0.9991209, 0.0087192, 0.0410022, 0.0003578]
+    accel_std:      7.0e-4
+    accel_bias_std: 4.0e-4
+    gyro_std:       5.236e-5
+    gyro_bias_std:  3.0e-5
+  ars548:
+    topic: /ars548
+    convention: NWU
+    pos: [0.0, 0.0, 0.7]
+    rot: [1.0, 0.0, 0.0, 0.0]
+    fields:
+      power: intensity
+      doppler: doppler
+  oculii_eagle:
+    topic: /radar_enhanced_pcl2
+    convention: NWU
+    pos: [0.07, 0.0, -0.115]
+    rot: [1.0, 0.0, 0.0, 0.0]
+    apply_filter: true
+    fields:
+      power: Power
+      doppler: Doppler
+sequences:
+  - name: st_20231213_1
+    gt: full_trajs/20231213/data1/utm50r_T_xt32.txt
+    bags:
+      - 20231213/data1.bag
+  - name: iaf_20231213_2
+    gt: full_trajs/20231213/data2/utm50r_T_xt32.txt
+    bags:
+      - 20231213/data2.bag
+  - name: iaf_20231213_3
+    gt: full_trajs/20231213/data3/utm50r_T_xt32.txt
+    bags:
+      - 20231213/data3.bag
+  - name: if_20231213_4
+    gt: full_trajs/20231213/data4/utm50r_T_xt32.txt
+    bags:
+      - 20231213/data4.bag
+  - name: if_20231213_5
+    gt: full_trajs/20231213/data5/utm50r_T_xt32.txt
+    bags:
+      - 20231213/data5.bag
