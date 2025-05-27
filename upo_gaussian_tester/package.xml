@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="3">
+	<name>upo_gaussian_tester</name>
+	<version>1.0.0</version>
+	<description>The upo_gaussian_tester package</description>
+	<maintainer email="famozur@upo.es">Fernando Amodeo</maintainer>
+	<license>MIT</license>
+	<author>Fernando Amodeo</author>
+
+	<buildtool_depend>catkin</buildtool_depend>
+
+	<depend>roscpp</depend>
+	<depend>rosbag</depend>
+	<depend>pcl_conversions</depend>
+	<depend>upo_gaussians</depend>
+
+	<depend>std_msgs</depend>
+	<depend>sensor_msgs</depend>
+
+</package>
+
