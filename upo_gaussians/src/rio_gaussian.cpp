@@ -72,7 +72,7 @@ bool RioGaussian::process_keyframe(RadarCloud::Ptr cl)
 
 	std::cout << "RioGaussian: modeling " << p.num_gaussians << " gaussians with " << p.num_threads << " threads" << std::endl;
 
-	m_model.fit(*cl, p);
+	m_model.fit_server(*cl, p);
 
 	detail::GaussianMatchResults ret;
 	if (!m_model.match(ret, *cl)) {

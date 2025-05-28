@@ -66,6 +66,7 @@ namespace upo_gaussians {
 		}
 
 		void fit(AnyCloudIn cl, FitParams const& p);
+		void fit_server(AnyCloudIn cl, FitParams const& p);
 
 		bool match(
 			MatchResults& out,
@@ -78,6 +79,11 @@ namespace upo_gaussians {
 		template <typename PointType>
 		void fit(pcl::PointCloud<PointType> const& cl, FitParams const& p = FitParams{}) {
 			fit(cl.getMatrixXfMap(), p);
+		}
+
+		template <typename PointType>
+		void fit_server(pcl::PointCloud<PointType> const& cl, FitParams const& p = FitParams{}) {
+			fit_server(cl.getMatrixXfMap(), p);
 		}
 
 		template <typename PointType>

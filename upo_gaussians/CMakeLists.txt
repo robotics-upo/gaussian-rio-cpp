@@ -101,6 +101,7 @@ target_sources(upo_gaussians PRIVATE
 	src/kalman_core.cpp
 	src/radar.cpp
 	src/gaussian_fitting.cpp
+	src/gaussian_fitting_server.cpp
 	src/gaussian_scan_matching.cpp
 	src/icg_kernels.cu
 	src/rio_base.cpp
