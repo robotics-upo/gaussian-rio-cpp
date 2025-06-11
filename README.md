@@ -2,6 +2,8 @@
 
 4D Radar-Inertial Odometry implementation in C++, based on Gaussian modeling and multi-hypothesis scan matching
 
+[\[Preprint (arXiv)\]](http://arxiv.org/abs/2412.13639)
+
 **Under Construction**
 
 ## Requirements
@@ -38,3 +40,18 @@ This repository contains the following scripts (in the `scripts/` folder):
 - `evaluate_snailradar.py`: Generates evaluation metrics for Snail-Radar.
 
 Before running the odometry, it is required to adjust the path to the datasets in their respective `.yaml` files. Likewise, it is necessary to adjust the `DATASET_DIR` variable in the evaluation scripts.
+
+## Reference
+
+```
+@misc{gaussian4drio,
+	author = {Fernando Amodeo and Luis Merino and Fernando Caballero},
+	title = {4D Radar-Inertial Odometry based on Gaussian Modeling and Multi-Hypothesis Scan Matching},
+	year = {2024},
+	eprint = {arXiv:2412.13639},
+}
+```
+
+## Acknowledgements
+
+This work was partially supported by the following grants: 1) INSERTION PID2021-127648OB-C31, and 2) NORDIC TED2021-132476B-I00 projects, funded by MCIN/AEI/ 10.13039/501100011033 and the "European Union NextGenerationEU / PRTR".
