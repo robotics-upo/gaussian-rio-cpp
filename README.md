@@ -21,6 +21,8 @@ For evaluating NTU4DRadLM and Snail-Radar trajectories:
 - numpy
 - [evo](https://github.com/MichaelGrupp/evo)
 
+The generated trajectories used to calculate the metrics in our paper can be found [in our website](https://robotics.upo.es/~famozur/gaussian-rio-output.zip).
+
 ## Packages
 
 This repository contains two packages:
