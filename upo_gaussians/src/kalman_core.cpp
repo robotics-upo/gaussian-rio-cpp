@@ -199,6 +199,17 @@ void Strapdown::update_scanmatch(
 	}
 }
 
+Mat<6> Strapdown::pose_cov() const
+{
+	Mat<6,6> H;
+	H.block(0,0,3,3) = m_cov.block(Pos,Pos,3,3);
+	H.block(3,0,3,3) = m_cov.block(AttError,Pos,3,3);
+	H.block(0,3,3,3) = m_cov.block(Pos,AttError,3,3);
+	H.block(3,3,3,3) = m_cov.block(AttError,AttError,3,3);
+
+	return H;
+}
+
 Mat<6> Strapdown::error_cov() const
 {
 	Mat<6,CovTotal> H;

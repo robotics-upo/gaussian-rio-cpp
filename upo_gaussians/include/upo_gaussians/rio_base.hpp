@@ -50,17 +50,23 @@ namespace upo_gaussians {
 		double time() const { return m_imu_time - m_ref_time; }
 
 		bool has_keyframe() const { return m_keyframe_time >= 0.0; }
+		bool at_keyframe() const { return has_keyframe() && m_keyframe_time == m_match_time; }
 		double kf_time() const { return time() - m_keyframe_time; }
 		double match_time() const { return time() - m_match_time; }
 		Pose kf_pose() const { return m_keyframe.inverse()*pose(); }
 
+		Vec<3> angvel() const { return m_angvel; }
 		Vec<3> egovel() const { return calc_egovel(m_angvel); }
+
+		RadarCloud const* last_cloud() const { return m_last_cloud.get(); }
 
 		void process(Input const& input);
 
 	protected:
 		PropParams m_prop_params;
 		InitImuParams m_init_imu_params;
+
+		std::shared_ptr<RadarCloud> m_last_cloud{};
 
 		double m_max_init_time;
 		double m_ref_time = -1.0;

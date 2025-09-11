@@ -61,6 +61,7 @@ namespace upo_gaussians {
 		Vec<3> velocity()   const { return m_state.segment<3>(Vel);           }
 		Vec<3> accel_bias() const { return m_state.segment<3>(AccBias);       }
 		Vec<3> gyro_bias()  const { return m_state.segment<3>(GyrBias);       }
+		Mat<6> pose_cov() const;
 		Mat<6> error_cov() const;
 
 		void init_r2i(

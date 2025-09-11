@@ -30,6 +30,8 @@ namespace upo_gaussians {
 
 		/* inline */ PoseArray particle_swarm();
 
+		GaussianModel const& model() const { return m_model; }
+
 	protected:
 		bool scan_matching(RadarCloud::Ptr cl);
 		bool process_keyframe(RadarCloud::Ptr cl);

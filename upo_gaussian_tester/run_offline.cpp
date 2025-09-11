@@ -4,12 +4,35 @@
 
 #include <iostream>
 #include <fstream>
+#include <chrono>
+#include <csignal>
 
 #include "config.hpp"
 #include "ros_utils.hpp"
 
+#include <tf2_msgs/TFMessage.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <nav_msgs/Odometry.h>
+
 namespace {
 	using namespace upo_gaussians;
+
+	volatile bool has_ctrlc = false;
+
+	void sigint_handler(int signum)
+	{
+		signal(SIGINT, sigint_handler);
+		if (!has_ctrlc) {
+			printf("Interrupted\n");
+			has_ctrlc = true;
+		}
+	}
+
+	void setup_ctrlc()
+	{
+		signal(SIGINT, sigint_handler);
+	}
 
 	bool is_keyframe(RioBase const& rio)
 	{
@@ -70,9 +93,11 @@ namespace {
 		imu_params.convention = ds.imu.convention;
 
 		FILE *fout_traj, *fout_extra;
+		std::string dump_fname = outname + "_dumps.bag";
 		{
 			std::string traj_fname  = outname + "_traj_"  + seq.name + ".txt";
 			std::string extra_fname = outname + "_extra_" + seq.name + ".txt";
+
 			fout_traj  = fopen(traj_fname.c_str(),  "w");
 			fout_extra = fopen(extra_fname.c_str(), "w");
 		}
@@ -81,10 +106,27 @@ namespace {
 			fprintf(fout_traj, "# timestamp tx ty tz qx qy qz qw\n");
 		}
 
+		rosbag::Bag dumpbag(dump_fname, rosbag::bagmode::Write);
+
+		geometry_msgs::TransformStamped keyframe;
+		keyframe.header.frame_id = "map";
+		keyframe.child_frame_id = "keyframe";
+		keyframe.transform.rotation.w = 1.0;
+
+		nav_msgs::Odometry navmsg;
+		navmsg.header.frame_id = "map";
+		navmsg.child_frame_id = "odom";
+
+		RioGaussian* grio = dynamic_cast<RioGaussian*>(&rio);
+
 		for (auto& bagname : seq.bags) {
+			if (has_ctrlc) break;
+
 			rosbag::Bag bag(ds.path + "/" + bagname);
 
 			for (auto msg : rosbag::View(bag)) {
+				if (has_ctrlc) break;
+
 				auto topic = msg.getTopic();
 
 				if (topic == ds.imu.topic) {
@@ -99,14 +141,15 @@ namespace {
 						continue;
 					}
 
+					unsigned cur_scan_id = scan_id++;
 					printf("[Scan %5u] Radar data at %f (%zu points) with %zu IMU messages\n",
-						scan_id++, rio_input.radar_time, rio_input.radar_scan.size(), rio_input.imu_data.size());
-					rio.process(rio_input);
-					rio_input.imu_data.clear();
+						cur_scan_id, rio_input.radar_time, rio_input.radar_scan.size(), rio_input.imu_data.size());
 
-					if (rio.is_initial()) {
-						continue;
-					}
+					auto tref = std::chrono::steady_clock::now();
+					rio.process(rio_input);
+					double process_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tref).count();
+
+					rio_input.imu_data.clear();
 
 					auto t = rio.position();
 					auto q = rio.attitude();
@@ -116,25 +159,146 @@ namespace {
 					auto r2it = rio.r2i_tran();
 					auto r2iq = rio.r2i_rot();
 
-					std::cout << "  Pose: t=[" << t.transpose() << "]; rot=[" << quat_to_rpy(q).transpose()*360.0/M_TAU << "]" << std::endl;
+					auto kfrelpose = rio.kf_pose();
+					auto kfrelt = Vec<3>{kfrelpose.translation()};
+					auto kfrelq = Quat{kfrelpose.rotation()};
 
-					if (fout_traj) {
-						fprintf(fout_traj, "%f %.15g %.15g %.15g %.15g %.15g %.15g %.15g\n",
-							rio_input.radar_time,
-							t.x(), t.y(), t.z(),
-							q.x(), q.y(), q.z(), q.w()
-						);
+					if (!rio.is_initial()) {
+						std::cout << "  Process time: " << process_ms << " ms" << std::endl;
+						std::cout << "  Pose: t=[" << t.transpose() << "]; rot=[" << quat_to_rpy(q).transpose()*360.0/M_TAU << "]" << std::endl;
+
+						if (fout_traj) {
+							fprintf(fout_traj, "%f %.15g %.15g %.15g %.15g %.15g %.15g %.15g\n",
+								rio_input.radar_time,
+								t.x(), t.y(), t.z(),
+								q.x(), q.y(), q.z(), q.w()
+							);
+						}
+
+						if (fout_extra) {
+							fprintf(fout_extra,
+								"%u %u %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g\n",
+								cur_scan_id, rio.at_keyframe(), process_ms,
+								ev(0), ev(1), ev(2),
+								ab(0), ab(1), ab(2),
+								wb(0), wb(1), wb(2),
+								r2it(0), r2it(1), r2it(2),
+								r2iq.x(), r2iq.y(), r2iq.z(), r2iq.w(),
+								kfrelt(0), kfrelt(1), kfrelt(2),
+								kfrelq.x(), kfrelq.y(), kfrelq.z(), kfrelq.w()
+							);
+						}
 					}
 
-					if (fout_extra) {
-						fprintf(fout_extra,
-							"%.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g %.15g\n",
-							ev(0), ev(1), ev(2),
-							ab(0), ab(1), ab(2),
-							wb(0), wb(1), wb(2),
-							r2it(0), r2it(1), r2it(2),
-							r2iq.x(), r2iq.y(), r2iq.z(), r2iq.w()
-						);
+					auto rosnow = ros::Time(rio_input.radar_time);
+
+					// Write odometry
+					{
+						tf2_msgs::TFMessage tf;
+
+						if (!rio.is_initial()) {
+							geometry_msgs::TransformStamped odom;
+							odom.header.stamp = rosnow;
+							odom.header.frame_id = "keyframe";
+							odom.child_frame_id = "odom";
+							odom.transform.translation.x = kfrelt(0);
+							odom.transform.translation.y = kfrelt(1);
+							odom.transform.translation.z = kfrelt(2);
+							odom.transform.rotation.x = kfrelq.x();
+							odom.transform.rotation.y = kfrelq.y();
+							odom.transform.rotation.z = kfrelq.z();
+							odom.transform.rotation.w = kfrelq.w();
+							tf.transforms.emplace_back(std::move(odom));
+
+							navmsg.header.stamp = rosnow;
+							navmsg.pose.pose.position.x = t(0);
+							navmsg.pose.pose.position.y = t(1);
+							navmsg.pose.pose.position.z = t(2);
+							navmsg.pose.pose.orientation.x = q.x();
+							navmsg.pose.pose.orientation.y = q.y();
+							navmsg.pose.pose.orientation.z = q.z();
+							navmsg.pose.pose.orientation.w = q.w();
+
+							Mat<6> posecov = rio.pose_cov();
+							memcpy(navmsg.pose.covariance.data(), posecov.data(), sizeof(navmsg.pose.covariance));
+
+							Vec<3> vel = rio.attitude().conjugate()*rio.velocity();
+							Vec<3> angvel = rio.angvel();
+							navmsg.twist.twist.linear.x = vel(0);
+							navmsg.twist.twist.linear.y = vel(1);
+							navmsg.twist.twist.linear.z = vel(2);
+							navmsg.twist.twist.angular.x = angvel(0);
+							navmsg.twist.twist.angular.y = angvel(1);
+							navmsg.twist.twist.angular.z = angvel(2);
+
+							dumpbag.write("/grio/odom", rosnow, navmsg);
+						}
+
+						if (rio.at_keyframe()) {
+							keyframe.transform.translation.x = t(0);
+							keyframe.transform.translation.y = t(1);
+							keyframe.transform.translation.z = t(2);
+							keyframe.transform.rotation.x = q.x();
+							keyframe.transform.rotation.y = q.y();
+							keyframe.transform.rotation.z = q.z();
+							keyframe.transform.rotation.w = q.w();
+						}
+
+						keyframe.header.stamp = rosnow;
+						tf.transforms.push_back(keyframe);
+
+						dumpbag.write("/tf", rosnow, tf);
+					}
+
+					// Write the pointcloud to a message
+					{
+						sensor_msgs::PointCloud2 roscl;
+						pcl::toROSMsg(*rio.last_cloud(), roscl);
+
+						roscl.header.stamp = rosnow;
+						roscl.header.frame_id = "odom";
+						dumpbag.write("/grio/processed_radar", rosnow, roscl);
+					}
+
+					// Write the Gaussians
+					if (grio && grio->model().size()) {
+						auto& model = grio->model();
+
+						visualization_msgs::MarkerArray marr;
+						{
+							visualization_msgs::Marker m;
+							m.header.stamp = rosnow;
+							m.header.frame_id = "keyframe";
+							m.action = visualization_msgs::Marker::DELETEALL;
+							marr.markers.emplace_back(std::move(m));
+						}
+
+						for (Eigen::Index i = 0; i < model.size(); i ++) {
+							visualization_msgs::Marker m;
+							m.header.stamp = rosnow;
+							m.header.frame_id = "keyframe";
+							m.action = visualization_msgs::Marker::ADD;
+							m.id = i;
+							m.type = visualization_msgs::Marker::SPHERE;
+							m.pose.position.x = model.centers.col(i)(0);
+							m.pose.position.y = model.centers.col(i)(1);
+							m.pose.position.z = model.centers.col(i)(2);
+							m.pose.orientation.x = model.quats(i).x();
+							m.pose.orientation.y = model.quats(i).y();
+							m.pose.orientation.z = model.quats(i).z();
+							m.pose.orientation.w = model.quats(i).w();
+							Vec<3> scale = 2.0*model.log_scales.col(i).array().exp().matrix();
+							m.scale.x = scale(0);
+							m.scale.y = scale(1);
+							m.scale.z = scale(2);
+							m.color.a = 0.5;
+							m.color.r = 0.0;
+							m.color.g = 1.0;
+							m.color.b = 0.0;
+							marr.markers.emplace_back(std::move(m));
+						}
+
+						dumpbag.write("/grio/gaussians", rosnow, marr);
 					}
 				}
 			}
@@ -217,6 +381,8 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
+	setup_ctrlc();
+
 	std::visit([&](auto& rio_params) {
 		rio_params.num_threads = get_nprocs();
 		rio_params.w_accel_bias_std = ds.imu.accel_bias_std;
@@ -225,6 +391,8 @@ int main(int argc, char* argv[])
 		rio_params.filter_cloud = ds.radar.apply_filter;
 
 		for (auto& seq : ds.seqs) {
+			if (has_ctrlc) break;
+
 			RioConfigToMethod<decltype(rio_params)> rio{is_keyframe, rio_params};
 			run_odometry(rio, ds, seq, p_output);
 		}

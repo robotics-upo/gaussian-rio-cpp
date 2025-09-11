@@ -55,6 +55,7 @@ void RioBase::process(Input const& input)
 	}
 
 	auto cl_ptr = std::make_shared<RadarCloud>(std::move(cl));
+	m_last_cloud = cl_ptr;
 
 	bool has_imu = input.imu_data.size() != 0;
 	if (is_initial()) {
