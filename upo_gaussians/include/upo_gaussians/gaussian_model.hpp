@@ -1,6 +1,7 @@
 #pragma once
 #include "types.hpp"
 #include "radar.hpp"
+#include "sph.hpp"
 
 namespace upo_gaussians {
 
@@ -13,6 +14,12 @@ namespace upo_gaussians {
 			double   disc_thickness = 0.15;
 			uint16_t num_threads    = 4;
 			bool     verbose        = false;
+		};
+
+		struct GaussianRcsParams {
+			double   db_thresh      = 10.0;
+			uint16_t min_ppg        = 1;
+			bool     use_incident   = false;
 		};
 
 		struct GaussianMatchParams {
@@ -38,12 +45,19 @@ namespace upo_gaussians {
 
 	struct GaussianModel {
 		using FitParams    = detail::GaussianFitParams;
+		using RcsParams    = detail::GaussianRcsParams;
 		using MatchParams  = detail::GaussianMatchParams;
 		using MatchResults = detail::GaussianMatchResults;
+
+		static constexpr unsigned G_SPH_LEVEL  = 3;
+		static constexpr unsigned G_SPH_NCOEFS = SPH_NUM_COEFS<G_SPH_LEVEL>;
 
 		VecArray<3> centers;
 		VecArray<3> log_scales;
 		QuatArray   quats;
+
+		DynVecf     rcs_scales;
+		VecArray<G_SPH_NCOEFS,float> rcs_coefs;
 
 		Eigen::Index size() const {
 			return centers.cols();
@@ -65,10 +79,16 @@ namespace upo_gaussians {
 			}
 		}
 
+		Vec<3> incident(size_t gidx, Vec<3> const& v) {
+			return (-log_scales.col(gidx)).array().exp()*(quats(gidx).conjugate()*(v - centers.col(gidx))).array();
+		}
+
 		void fit(AnyCloudIn cl, FitParams const& p);
 		void fit_server(AnyCloudIn cl, FitParams const& p);
 
 		std::vector<int32_t> matchup(AnyCloudIn cl, float max_mahal);
+
+		void fit_rcs(RadarCloud const& cl, RcsParams const& p = RcsParams{});
 
 		bool match(
 			MatchResults& out,
