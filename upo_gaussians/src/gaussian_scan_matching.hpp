@@ -119,6 +119,10 @@ public:
 		return particle_cur(i)*m_initPose;
 	}
 
+	int32_t matchup_for(size_t i) const {
+		return m_matchups[i];
+	}
+
 	std::pair<size_t,double> matchup(float max_mahal);
 	void iteration(double min_change_rot, double min_change_tran);
 };

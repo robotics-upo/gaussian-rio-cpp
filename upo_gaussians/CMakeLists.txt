@@ -75,7 +75,7 @@ target_link_libraries(upo_gaussians PRIVATE
 
 target_compile_options(upo_gaussians PRIVATE
 	-Wall
-	$<$<COMPILE_LANGUAGE:CUDA>:-Xcudafe --diag_suppress=esa_on_defaulted_function_ignored>
+	$<$<COMPILE_LANGUAGE:CUDA>:-Xcudafe --diag_suppress=esa_on_defaulted_function_ignored --expt-relaxed-constexpr>
 )
 
 target_compile_features(upo_gaussians PUBLIC cxx_std_17)
@@ -100,6 +100,7 @@ target_include_directories(upo_gaussians PUBLIC
 target_sources(upo_gaussians PRIVATE
 	src/kalman_core.cpp
 	src/radar.cpp
+	src/traj.cpp
 	src/gaussian_fitting.cpp
 	src/gaussian_fitting_server.cpp
 	src/gaussian_scan_matching.cpp

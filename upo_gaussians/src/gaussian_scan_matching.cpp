@@ -127,6 +127,25 @@ void IcgContext::iteration(double min_change_rot, double min_change_tran)
 
 }
 
+std::vector<int32_t> GaussianModel::matchup(
+	AnyCloudIn cl,
+	float max_mahal
+)
+{
+	PoseArray pa;
+	pa.resize(1);
+	pa(0) = Pose::Identity();
+	detail::IcgContext icg{cl, *this, pa(0), pa};
+	icg.matchup(max_mahal);
+
+	std::vector<int32_t> ret((size_t)cl.cols());
+	for (size_t i = 0; i < ret.size(); i ++) {
+		ret[i] = icg.matchup_for(i);
+	}
+
+	return ret;
+}
+
 bool GaussianModel::match(
 	MatchResults& out,
 	AnyCloudIn cl,

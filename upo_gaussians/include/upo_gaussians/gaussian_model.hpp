@@ -68,6 +68,8 @@ namespace upo_gaussians {
 		void fit(AnyCloudIn cl, FitParams const& p);
 		void fit_server(AnyCloudIn cl, FitParams const& p);
 
+		std::vector<int32_t> matchup(AnyCloudIn cl, float max_mahal);
+
 		bool match(
 			MatchResults& out,
 			AnyCloudIn cl,
@@ -84,6 +86,11 @@ namespace upo_gaussians {
 		template <typename PointType>
 		void fit_server(pcl::PointCloud<PointType> const& cl, FitParams const& p = FitParams{}) {
 			fit_server(cl.getMatrixXfMap(), p);
+		}
+
+		template <typename PointType>
+		std::vector<int32_t> matchup(pcl::PointCloud<PointType> const& cl, float max_mahal = 100.0f) {
+			return matchup(cl.getMatrixXfMap(), max_mahal);
 		}
 
 		template <typename PointType>

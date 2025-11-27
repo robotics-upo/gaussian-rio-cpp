@@ -59,6 +59,7 @@ namespace upo_gaussians {
 		Vec<3> egovel() const { return calc_egovel(m_angvel); }
 
 		RadarCloud const* last_cloud() const { return m_last_cloud.get(); }
+		RadarCloud const* kf_cloud() const { return m_kf_cloud.get(); }
 
 		void process(Input const& input);
 
@@ -67,6 +68,7 @@ namespace upo_gaussians {
 		InitImuParams m_init_imu_params;
 
 		std::shared_ptr<RadarCloud> m_last_cloud{};
+		std::shared_ptr<RadarCloud> m_kf_cloud{};
 
 		double m_max_init_time;
 		double m_ref_time = -1.0;
@@ -136,6 +138,7 @@ namespace upo_gaussians {
 			m_keyframe      = pose();
 			m_keyframe_cov  = error_cov();
 			m_keyframe_time = m_match_time = kf_time;
+			m_kf_cloud      = m_last_cloud;
 		}
 
 	private:

@@ -93,7 +93,7 @@ namespace {
 		imu_params.convention = ds.imu.convention;
 
 		FILE *fout_traj, *fout_extra;
-		std::string dump_fname = outname + "_dumps.bag";
+		std::string dump_fname = outname + "_dumps_" + seq.name + ".bag";
 		{
 			std::string traj_fname  = outname + "_traj_"  + seq.name + ".txt";
 			std::string extra_fname = outname + "_extra_" + seq.name + ".txt";
@@ -118,6 +118,8 @@ namespace {
 		navmsg.child_frame_id = "odom";
 
 		RioGaussian* grio = dynamic_cast<RioGaussian*>(&rio);
+
+		bool did_kf_cloud = false;
 
 		for (auto& bagname : seq.bags) {
 			if (has_ctrlc) break;
@@ -258,6 +260,18 @@ namespace {
 						roscl.header.stamp = rosnow;
 						roscl.header.frame_id = "odom";
 						dumpbag.write("/grio/processed_radar", rosnow, roscl);
+					}
+
+					// Write keyframe pointcloud to a message
+					if (!rio.is_initial() && (!did_kf_cloud || rio.at_keyframe())) {
+						did_kf_cloud = true;
+
+						sensor_msgs::PointCloud2 roscl;
+						pcl::toROSMsg(*rio.kf_cloud(), roscl);
+
+						roscl.header.stamp = rosnow;
+						roscl.header.frame_id = "keyframe";
+						dumpbag.write("/grio/keyframe_cloud", rosnow, roscl);
 					}
 
 					// Write the Gaussians
