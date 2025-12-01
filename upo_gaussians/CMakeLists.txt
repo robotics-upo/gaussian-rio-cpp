@@ -105,6 +105,7 @@ target_sources(upo_gaussians PRIVATE
 	src/gaussian_fitting_server.cpp
 	src/gaussian_scan_matching.cpp
 	src/gaussian_rcs.cpp
+	src/gaussian_io.cpp
 	src/icg_kernels.cu
 	src/rio_base.cpp
 	src/rio_ndt.cpp

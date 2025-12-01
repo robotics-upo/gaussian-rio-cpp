@@ -63,6 +63,10 @@ namespace upo_gaussians {
 			return centers.cols();
 		}
 
+		bool has_rcs() const {
+			return rcs_scales.size() != 0;
+		}
+
 		auto quats_array() {
 			return Eigen::Map<VecArray<4>>{ quats.data()->coeffs().data(), Eigen::NoChange, quats.rows() };
 		}
@@ -89,6 +93,9 @@ namespace upo_gaussians {
 		std::vector<int32_t> matchup(AnyCloudIn cl, float max_mahal);
 
 		void fit_rcs(RadarCloud const& cl, RcsParams const& p = RcsParams{});
+
+		void save(const char* fname) const;
+		bool load(const char* fname);
 
 		bool match(
 			MatchResults& out,
