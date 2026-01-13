@@ -9,8 +9,10 @@ IcgContext::IcgContext(
 	AnyCloudIn cl,
 	GaussianModel const& model,
 	Pose const& init_pose,
-	PoseArray const& particles
+	PoseArray const& particles,
+	Eigen::Index rcs_index
 ) :
+	m_gm{model},
 	m_initPose{init_pose},
 	m_numPoints{(uint32_t)cl.cols()},
 	m_numGaussians{(uint32_t)model.size()},
@@ -20,6 +22,11 @@ IcgContext::IcgContext(
 	m_points.reserve(m_numPoints);
 	for (uint32_t i = 0; i < m_numPoints; i ++) {
 		m_points[i].segment<3>(0) = init_pose.cast<float>() * cl.col(i).segment<3>(0);
+	}
+
+	if (rcs_index >= 0 && model.has_rcs()) {
+		m_pointRcs.resize(m_numPoints);
+		m_pointRcs = cl.row(rcs_index).transpose();
 	}
 
 	m_g_centers.reserve(m_numGaussians);
@@ -67,7 +74,7 @@ std::pair<size_t,double> IcgContext::matchup(float max_mahal)
 	return { best_particle, best_sqmahal / m_numPoints };
 }
 
-void IcgContext::iteration(double min_change_rot, double min_change_tran)
+void IcgContext::iteration(double min_change_rot, double min_change_tran, double rcs_weight)
 {
 	for (size_t i = 0; i < m_numParticles; i ++) {
 		if (is_converged(i)) {
@@ -76,6 +83,9 @@ void IcgContext::iteration(double min_change_rot, double min_change_tran)
 
 		Mat<6> H = Mat<6>::Zero();
 		Vec<6> b = Vec<6>::Zero();
+
+		Mat<6> H_rcs = Mat<6>::Zero();
+		Vec<6> b_rcs = Vec<6>::Zero();
 
 		auto const* matchups = &m_matchups[i*m_numPoints];
 
@@ -105,6 +115,22 @@ void IcgContext::iteration(double min_change_rot, double min_change_tran)
 
 			H += J.transpose() * P * J;
 			b += J.transpose() * P * (transed_point - g_center);
+
+			if (m_pointRcs.size()) {
+				float rcs_scale = m_gm.rcs_scales(gid);
+				if (std::isnan(rcs_scale)) {
+					continue;
+				}
+
+				Vec<3> ray_unnorm = transed_point - g_center;
+				auto ray_sph = make_sph<GaussianModel::G_SPH_LEVEL,float>(ray_unnorm.normalized().cast<float>());
+				double pred_rcs = m_gm.rcs_coefs.col(gid).dot(ray_sph);
+				double real_rcs = std::pow(10.0, (m_pointRcs(j) - rcs_scale)/10.0);
+
+				auto rcs_grad = make_rcs_gradient(transed_point, g_center, m_gm.rcs_coefs.col(gid).cast<double>());
+				H_rcs += rcs_grad * rcs_grad.transpose();
+				b_rcs += rcs_grad * (pred_rcs - real_rcs);
+			}
 		}
 
 		//printf("  done, now calculating change\n");
@@ -151,10 +177,16 @@ bool GaussianModel::match(
 	AnyCloudIn cl,
 	Pose const& init_pose,
 	PoseArray const& init_particles,
-	MatchParams const& p
+	MatchParams const& p,
+	Eigen::Index rcs_idx,
+	RcsMatchParams const* rcsp
 )
 {
-	detail::IcgContext icg{cl, *this, init_pose, init_particles};
+	if ((rcs_idx < 3) != !rcsp || rcs_idx >= cl.rows()) {
+		return false;
+	}
+
+	detail::IcgContext icg{cl, *this, init_pose, init_particles, rcs_idx};
 	size_t iter = 0;
 	std::pair<size_t, double> best_so_far;
 
@@ -162,7 +194,7 @@ bool GaussianModel::match(
 
 	do {
 		iter ++;
-		icg.iteration(p.min_change_rot, p.min_change_tran);
+		icg.iteration(p.min_change_rot, p.min_change_tran, rcsp ? rcsp->rcs_weight : 0.0);
 		best_so_far = icg.matchup(p.mahal_thresh);
 	} while (iter < p.max_iters && icg.num_converged_particles() < icg.num_particles());
 

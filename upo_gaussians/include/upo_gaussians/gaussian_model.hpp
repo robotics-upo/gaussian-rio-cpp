@@ -18,7 +18,7 @@ namespace upo_gaussians {
 
 		struct GaussianRcsParams {
 			double   db_thresh      = 10.0;
-			uint16_t min_ppg        = 1;
+			uint16_t min_ppg        = 16;
 			bool     use_incident   = false;
 		};
 
@@ -27,6 +27,10 @@ namespace upo_gaussians {
 			float    mahal_thresh    = 4.0f;
 			double   min_change_tran = 1.0e-3;
 			double   min_change_rot  = 0.1*M_TAU/360.0;
+		};
+
+		struct GaussianRcsMatchParams {
+			double   rcs_weight      = 0.01;
 		};
 
 		struct GaussianMatchResults {
@@ -47,6 +51,7 @@ namespace upo_gaussians {
 		using FitParams    = detail::GaussianFitParams;
 		using RcsParams    = detail::GaussianRcsParams;
 		using MatchParams  = detail::GaussianMatchParams;
+		using RcsMatchParams = detail::GaussianRcsMatchParams;
 		using MatchResults = detail::GaussianMatchResults;
 
 		static constexpr unsigned G_SPH_LEVEL  = 3;
@@ -102,7 +107,9 @@ namespace upo_gaussians {
 			AnyCloudIn cl,
 			Pose const& init_pose,
 			PoseArray const& init_particles,
-			MatchParams const& p
+			MatchParams const& p,
+			Eigen::Index rcs_idx = -1,
+			RcsMatchParams const* rcsp = nullptr
 		);
 
 		template <typename PointType>
@@ -129,6 +136,18 @@ namespace upo_gaussians {
 			MatchParams const& p = MatchParams{}
 		) {
 			return match(out, cl.getMatrixXfMap(), init_pose, init_particles, p);
+		}
+
+		bool match_rcs(
+			MatchResults& out,
+			RadarCloud const& cl,
+			Pose const& init_pose = Pose::Identity(),
+			PoseArray const& init_particles = detail::default_swarm(),
+			MatchParams const& p = MatchParams{},
+			RcsMatchParams const& rcsp = RcsMatchParams{}
+		) {
+			return match(out, cl.getMatrixXfMap(), init_pose, init_particles, p,
+				offsetof(RadarPoint,power)/sizeof(float), &rcsp);
 		}
 	};
 

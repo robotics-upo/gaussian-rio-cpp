@@ -44,4 +44,6 @@ namespace upo_gaussians {
 		return ret;
 	}
 
+	Vec<6> make_rcs_gradient(Vec<3> const& in_pos, Vec<3> const& in_gpos, Vec<16> const& in_rcs);
+
 }

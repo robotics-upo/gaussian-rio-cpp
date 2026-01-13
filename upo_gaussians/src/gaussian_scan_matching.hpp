@@ -60,6 +60,7 @@ struct SPMat3 {
 using symposmat3 = SPMat3<float>;
 
 class IcgContext {
+	GaussianModel const& m_gm;
 	Pose const& m_initPose;
 
 	uint32_t m_numPoints;
@@ -68,6 +69,8 @@ class IcgContext {
 	uint32_t m_numBlocks;
 
 	uint64_t m_convergedParticles = 0;
+
+	DynVecf m_pointRcs;
 
 	GpuArray<Vecf<4>> m_points;
 	GpuArray<Vecf<4>> m_g_centers;
@@ -100,7 +103,8 @@ public:
 		AnyCloudIn cl,
 		GaussianModel const& model,
 		Pose const& init_pose,
-		PoseArray const& particles
+		PoseArray const& particles,
+		Eigen::Index rcs_index = -1
 	);
 
 	uint32_t num_particles() const {
@@ -124,7 +128,7 @@ public:
 	}
 
 	std::pair<size_t,double> matchup(float max_mahal);
-	void iteration(double min_change_rot, double min_change_tran);
+	void iteration(double min_change_rot, double min_change_tran, double rcs_weight = 0.0);
 };
 
 }
