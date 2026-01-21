@@ -9,14 +9,13 @@ namespace {
 __global__ void icgMatchupP2G_Impl(
 	uint32_t N_points,
 	uint32_t N_gaussians,
-	float max_sqmahal,
 	Vecf<4> const* in_T_tran,
 	Quatf const* in_T_rot,
 	Vecf<4> const* in_points,
 	Vecf<4> const* in_g_centers,
 	Vecf<4> const* in_g_invscale,
 	Quatf const* in_g_invrot,
-	int32_t* out_matchups,
+	Matchup* out_matchups,
 	MatchOutf* out_grid_matchout
 )
 {
@@ -28,7 +27,7 @@ __global__ void icgMatchupP2G_Impl(
 
 	bool is_active = point_idx < N_points;
 	int32_t best_idx = -1;
-	float best_sqmahal = is_active ? max_sqmahal : 0.0f;
+	float best_sqmahal = 0.0f;
 
 	Vecf<3> point;
 	if (is_active) {
@@ -66,7 +65,7 @@ __global__ void icgMatchupP2G_Impl(
 			auto vector = g_invscale.cwiseProduct(g_invrot*(point - g_center));
 			float sqmahal = vector.squaredNorm();
 
-			if (sqmahal < best_sqmahal) {
+			if (best_idx < 0 || sqmahal < best_sqmahal) {
 				best_idx = curidx;
 				best_sqmahal = sqmahal;
 			}
@@ -74,7 +73,9 @@ __global__ void icgMatchupP2G_Impl(
 	}
 
 	if (is_active) {
-		out_matchups[point_idx + N_points*transform_idx] = best_idx;
+		Matchup& mup = out_matchups[point_idx + N_points*transform_idx];
+		mup.gidx = best_idx;
+		mup.sqmahal = best_sqmahal;
 	}
 
 	// Sum-reduce for this warp
@@ -110,12 +111,11 @@ __global__ void icgMatchupP2G_Impl(
 
 }
 
-void IcgContext::cuda_matchupP2G(float max_mahal)
+void IcgContext::cuda_matchupP2G()
 {
 	icgMatchupP2G_Impl LAUNCH_ARGS(
 		m_numPoints,
 		m_numGaussians,
-		max_mahal*max_mahal,
 		m_T_tran,
 		m_T_rot,
 		m_points,

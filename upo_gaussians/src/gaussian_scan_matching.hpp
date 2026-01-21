@@ -4,6 +4,11 @@
 
 namespace upo_gaussians::detail {
 
+struct Matchup {
+	int32_t gidx;
+	float sqmahal;
+};
+
 template <typename T>
 struct MatchOut {
 	T sqmahal;
@@ -84,13 +89,13 @@ class IcgContext {
 	};
 
 	// Temporary buffers (GPU/CPU shared memory)
-	GpuArray<int32_t> m_matchups;
+	GpuArray<Matchup> m_matchups;
 	GpuArray<SRTemp> m_sum_reduce_temp;
 
 	auto* sr_matchOut() { return &m_sum_reduce_temp[0].match_out; }
 
 	// CUDA kernels
-	void cuda_matchupP2G(float max_mahal);
+	void cuda_matchupP2G();
 	void cuda_sumReducePxy();
 	void cuda_sumReduceRotOpt();
 
@@ -123,12 +128,12 @@ public:
 		return particle_cur(i)*m_initPose;
 	}
 
-	int32_t matchup_for(size_t i) const {
+	Matchup const& matchup_for(size_t i) const {
 		return m_matchups[i];
 	}
 
 	std::pair<size_t,double> matchup(float max_mahal);
-	void iteration(double min_change_rot, double min_change_tran, double rcs_weight = 0.0);
+	void iteration(float mahal_thresh, double min_change_rot, double min_change_tran, double rcs_weight = 0.0);
 };
 
 }

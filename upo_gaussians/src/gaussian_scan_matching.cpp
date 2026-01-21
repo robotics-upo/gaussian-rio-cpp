@@ -51,7 +51,7 @@ IcgContext::IcgContext(
 
 std::pair<size_t,double> IcgContext::matchup(float max_mahal)
 {
-	cuda_matchupP2G(max_mahal);
+	cuda_matchupP2G();
 	cudaDeviceSynchronize();
 
 	size_t best_particle = 0;
@@ -61,7 +61,12 @@ std::pair<size_t,double> IcgContext::matchup(float max_mahal)
 		MatchOutd out = { 0.0, 0 };
 		for (size_t j = 0; j < m_numBlocks; j ++) {
 			auto& in = sr_matchOut()[j + m_numBlocks*i];
-			out.sqmahal += sqrt(double(in.sqmahal));
+			float mahal = sqrt(double(in.sqmahal));
+			if (mahal > max_mahal) {
+				mahal = max_mahal;
+			}
+
+			out.sqmahal += mahal;
 			out.matches += in.matches;
 		}
 
@@ -74,8 +79,10 @@ std::pair<size_t,double> IcgContext::matchup(float max_mahal)
 	return { best_particle, best_sqmahal / m_numPoints };
 }
 
-void IcgContext::iteration(double min_change_rot, double min_change_tran, double rcs_weight)
+void IcgContext::iteration(float mahal_thresh, double min_change_rot, double min_change_tran, double rcs_weight)
 {
+	double max_sqmahal = double(mahal_thresh)*mahal_thresh;
+
 	for (size_t i = 0; i < m_numParticles; i ++) {
 		if (is_converged(i)) {
 			continue;
@@ -87,7 +94,7 @@ void IcgContext::iteration(double min_change_rot, double min_change_tran, double
 		Mat<6> H_rcs = Mat<6>::Zero();
 		Vec<6> b_rcs = Vec<6>::Zero();
 
-		auto const* matchups = &m_matchups[i*m_numPoints];
+		Matchup const* matchups = &m_matchups[i*m_numPoints];
 
 		//printf("  # for particle %zu\n", i);
 
@@ -95,9 +102,15 @@ void IcgContext::iteration(double min_change_rot, double min_change_tran, double
 		Vec<3> T_tran = m_T_tran[i].head<3>().cast<double>();
 
 		for (size_t j = 0; j < m_numPoints; j ++) {
-			int32_t gid = matchups[j];
+			int32_t gid = matchups[j].gidx;
 			if (gid < 0) {
 				continue;
+			}
+
+			double sqmahal = matchups[j].sqmahal;
+			double factor = 1.0;
+			if (sqmahal > max_sqmahal) {
+				factor = max_sqmahal/sqmahal;
 			}
 
 			Vec<3> transed_point = T_rot*m_points[j].head<3>().cast<double>() + T_tran;
@@ -113,8 +126,8 @@ void IcgContext::iteration(double min_change_rot, double min_change_tran, double
 			J.block<3,3>(0,0).setIdentity();
 			J.block<3,3>(0,3) = -skewsym(transed_point);
 
-			H += J.transpose() * P * J;
-			b += J.transpose() * P * (transed_point - g_center);
+			H += factor * J.transpose() * P * J;
+			b += factor * J.transpose() * P * (transed_point - g_center);
 
 			if (m_pointRcs.size()) {
 				float rcs_scale = m_gm.rcs_scales(gid);
@@ -166,7 +179,7 @@ std::vector<int32_t> GaussianModel::matchup(
 
 	std::vector<int32_t> ret((size_t)cl.cols());
 	for (size_t i = 0; i < ret.size(); i ++) {
-		ret[i] = icg.matchup_for(i);
+		ret[i] = icg.matchup_for(i).gidx;
 	}
 
 	return ret;
@@ -194,7 +207,7 @@ bool GaussianModel::match(
 
 	do {
 		iter ++;
-		icg.iteration(p.min_change_rot, p.min_change_tran, rcsp ? rcsp->rcs_weight : 0.0);
+		icg.iteration(p.mahal_thresh, p.min_change_rot, p.min_change_tran, rcsp ? rcsp->rcs_weight : 0.0);
 		best_so_far = icg.matchup(p.mahal_thresh);
 	} while (iter < p.max_iters && icg.num_converged_particles() < icg.num_particles());
 
