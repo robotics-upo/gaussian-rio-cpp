@@ -1,7 +1,5 @@
 #include "gaussian_scan_matching.hpp"
 
-#define LAUNCH_ARGS <<<dim3(m_numBlocks, m_numParticles), UPO_CUDA_NUM_THREADS>>>
-
 namespace upo_gaussians::detail {
 
 namespace {
@@ -9,6 +7,7 @@ namespace {
 __global__ void icgMatchupP2G_Impl(
 	uint32_t N_points,
 	uint32_t N_gaussians,
+	uint32_t* in_partidx,
 	Vecf<4> const* in_T_tran,
 	Quatf const* in_T_rot,
 	Vecf<4> const* in_points,
@@ -20,7 +19,7 @@ __global__ void icgMatchupP2G_Impl(
 )
 {
 	auto block_idx = blockIdx.x + gridDim.x * blockIdx.y;
-	auto transform_idx = blockIdx.y;
+	auto transform_idx = in_partidx[blockIdx.y];
 	auto point_idx = threadIdx.x + blockDim.x * blockIdx.x;
 	auto lane_idx = threadIdx.x & (CUDA_WARP_SIZE - 1);
 	auto warp_idx = threadIdx.x / CUDA_WARP_SIZE;
@@ -113,9 +112,20 @@ __global__ void icgMatchupP2G_Impl(
 
 void IcgContext::cuda_matchupP2G()
 {
-	icgMatchupP2G_Impl LAUNCH_ARGS(
+	uint32_t part = 0;
+	for (uint32_t i = 0; i < m_numParticles; i ++) {
+		if (!(m_disabledParticles & (UINT64_C(1) << i))) {
+			m_partidx[part++] = i;
+		}
+	}
+	if (!part) {
+		return;
+	}
+
+	icgMatchupP2G_Impl<<<dim3(m_numBlocks, part), UPO_CUDA_NUM_THREADS>>>(
 		m_numPoints,
 		m_numGaussians,
+		m_partidx,
 		m_T_tran,
 		m_T_rot,
 		m_points,

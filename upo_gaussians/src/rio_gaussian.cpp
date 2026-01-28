@@ -30,8 +30,8 @@ inline PoseArray RioGaussian::particle_swarm()
 	std::mt19937 m_rng{3135134162};
 	std::normal_distribution rng;
 	for (size_t i = 1; i < m_num_particles; i ++) {
-		Vec<3> tran { rng(m_rng), rng(m_rng), rng(m_rng) };
-		Vec<3> rot  { rng(m_rng), rng(m_rng), rng(m_rng) };
+		Vec<3> tran { rng(m_rng), rng(m_rng), 0.0*rng(m_rng) };
+		Vec<3> rot  { 0.0*rng(m_rng), 0.0*rng(m_rng), rng(m_rng) };
 		pa(i) = make_pose(so3_exp(rot*m_particle_std_rot), tran*m_particle_std_xyz);
 	}
 

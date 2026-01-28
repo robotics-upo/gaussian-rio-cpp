@@ -19,6 +19,7 @@ IcgContext::IcgContext(
 	m_numParticles{(uint32_t)particles.rows()},
 	m_numBlocks{(m_numPoints + UPO_CUDA_NUM_THREADS - 1) / UPO_CUDA_NUM_THREADS}
 {
+	m_partidx.reserve(m_numParticles);
 	m_points.reserve(m_numPoints);
 	for (uint32_t i = 0; i < m_numPoints; i ++) {
 		m_points[i].segment<3>(0) = init_pose.cast<float>() * cl.col(i).segment<3>(0);
@@ -53,6 +54,7 @@ std::pair<size_t,double> IcgContext::matchup(float max_mahal)
 {
 	cuda_matchupP2G();
 	cudaDeviceSynchronize();
+	m_disabledParticles |= m_convergedParticles;
 
 	size_t best_particle = 0;
 	double best_sqmahal = 0.0;
@@ -160,6 +162,15 @@ void IcgContext::iteration(float mahal_thresh, double min_change_rot, double min
 
 		if (ch_tran.norm() <= min_change_tran && ch_rot_so3.norm() <= min_change_rot) {
 			m_convergedParticles |= UINT64_C(1) << i;
+		}
+
+		for (size_t j = 0; j < i; j ++) {
+			Vec<3> diff_t = (m_T_tran[j].head<3>() - m_T_tran[i].head<3>()).cast<double>();
+			Vec<3> diff_r = so3_log((m_T_rot[i].conjugate()*m_T_rot[j]).cast<double>());
+			if (diff_t.norm() <= min_change_tran && diff_r.norm() <= min_change_rot) {
+				m_convergedParticles |= UINT64_C(1) << i;
+				break;
+			}
 		}
 	}
 }

@@ -74,9 +74,11 @@ class IcgContext {
 	uint32_t m_numBlocks;
 
 	uint64_t m_convergedParticles = 0;
+	uint64_t m_disabledParticles = 0;
 
 	DynVecf m_pointRcs;
 
+	GpuArray<uint32_t> m_partidx;
 	GpuArray<Vecf<4>> m_points;
 	GpuArray<Vecf<4>> m_g_centers;
 	GpuArray<Vecf<4>> m_g_invscale;
