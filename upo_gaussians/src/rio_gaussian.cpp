@@ -11,7 +11,8 @@ RioGaussian::RioGaussian(
 	m_num_particles{p.num_particles},
 	m_match_thresh{p.match_thresh},
 	m_particle_std_xyz{p.particle_std_xyz},
-	m_particle_std_rot{p.particle_std_rot}
+	m_particle_std_rot{p.particle_std_rot},
+	m_ablated{p.ablated}
 {
 	const char* fnp = getenv("FORCE_NUM_PARTICLES");
 	if (fnp) {
@@ -59,20 +60,24 @@ bool RioGaussian::scan_matching(RadarCloud::Ptr cl)
 
 bool RioGaussian::process_keyframe(RadarCloud::Ptr cl)
 {
-	detail::GaussianFitParams p;
+	if (!m_ablated) {
+		detail::GaussianFitParams p;
 
-	p.num_gaussians = (2*cl->size() + 1) / (2*m_gaussian_sz);
-	p.num_threads = num_threads();
-	//p.verbose = true;
+		p.num_gaussians = (2*cl->size() + 1) / (2*m_gaussian_sz);
+		p.num_threads = num_threads();
+		//p.verbose = true;
 
-	const char* fng = getenv("FORCE_NUM_GAUSSIANS");
-	if (fng) {
-		p.num_gaussians = atoi(fng);
+		const char* fng = getenv("FORCE_NUM_GAUSSIANS");
+		if (fng) {
+			p.num_gaussians = atoi(fng);
+		}
+
+		std::cout << "RioGaussian: modeling " << p.num_gaussians << " gaussians with " << p.num_threads << " threads" << std::endl;
+
+		m_model.fit_server(*cl, p);
+	} else {
+		m_model.fit_ablation(*cl);
 	}
-
-	std::cout << "RioGaussian: modeling " << p.num_gaussians << " gaussians with " << p.num_threads << " threads" << std::endl;
-
-	m_model.fit_server(*cl, p);
 
 	detail::GaussianMatchResults ret;
 	if (!m_model.match(ret, *cl)) {

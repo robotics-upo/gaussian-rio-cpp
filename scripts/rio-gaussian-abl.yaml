@@ -1,3 +1,4 @@
 method: gaussian
 gaussian:
-  gaussian_size: 16
+  ablated: True
+

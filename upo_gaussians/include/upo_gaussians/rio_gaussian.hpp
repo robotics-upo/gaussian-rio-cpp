@@ -12,6 +12,7 @@ namespace upo_gaussians {
 			double match_thresh = 50.0;
 			double particle_std_xyz = 5.0;
 			double particle_std_rot = 5.0*M_TAU/360.0;
+			bool   ablated = false;
 		};
 
 	}
@@ -42,6 +43,7 @@ namespace upo_gaussians {
 		double m_match_thresh;
 		double m_particle_std_xyz;
 		double m_particle_std_rot;
+		bool   m_ablated;
 
 		GaussianModel m_model;
 		double m_basemahal;

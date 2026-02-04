@@ -103,6 +103,7 @@ target_sources(upo_gaussians PRIVATE
 	src/traj.cpp
 	src/gaussian_fitting.cpp
 	src/gaussian_fitting_server.cpp
+	src/gaussian_fitting_abl.cpp
 	src/gaussian_scan_matching.cpp
 	src/gaussian_rcs.cpp
 	src/gaussian_io.cpp

@@ -287,6 +287,7 @@ namespace YAML {
 				_DECODE_FIELD_OPT(match_thresh);
 				_DECODE_FIELD_OPT(particle_std_xyz);
 				_DECODE_FIELD_OPT(particle_std_rot);
+				_DECODE_FIELD_OPT(ablated);
 			}
 			return true;
 		}
