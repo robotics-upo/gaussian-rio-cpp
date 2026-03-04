@@ -17,6 +17,7 @@ namespace upo_gaussians {
 	};
 
 	using RadarCloud = pcl::PointCloud<RadarPoint>;
+	using IncidenceCloud = pcl::PointCloud<pcl::PointXYZ>;
 
 	struct RadarFilterParams {
 		float min_power     = 10.0f;

@@ -98,7 +98,7 @@ namespace upo_gaussians {
 
 		std::vector<int32_t> matchup(AnyCloudIn cl, float max_mahal);
 
-		void fit_rcs(RadarCloud const& cl, RcsParams const& p = RcsParams{});
+		void fit_rcs(RadarCloud const& cl, IncidenceCloud const& incicl, RcsParams const& p = RcsParams{});
 
 		void save(const char* fname) const;
 		bool load(const char* fname);

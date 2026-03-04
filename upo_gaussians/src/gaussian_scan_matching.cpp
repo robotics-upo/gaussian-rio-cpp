@@ -137,6 +137,7 @@ void IcgContext::iteration(float mahal_thresh, double min_change_rot, double min
 					continue;
 				}
 
+				/*
 				Vec<3> ray_unnorm = transed_point - g_center;
 				auto ray_sph = make_sph<GaussianModel::G_SPH_LEVEL,float>(ray_unnorm.normalized().cast<float>());
 				double pred_rcs = m_gm.rcs_coefs.col(gid).dot(ray_sph);
@@ -145,7 +146,32 @@ void IcgContext::iteration(float mahal_thresh, double min_change_rot, double min
 				auto rcs_grad = make_rcs_gradient(transed_point, g_center, m_gm.rcs_coefs.col(gid).cast<double>());
 				H_rcs += rcs_grad * rcs_grad.transpose();
 				b_rcs += rcs_grad * (pred_rcs - real_rcs);
+				*/
+
+				Vec<3> ray_unnorm = m_initPose.inverse()*(T_rot.conjugate()*(g_center-T_tran));
+				if (ray_unnorm.x() < 0.0) {
+					continue;
+				}
+
+				auto ray_sph = make_sph<GaussianModel::G_SPH_LEVEL,float>(ray_unnorm.normalized().cast<float>());
+				double pred_rcs = m_gm.rcs_coefs.col(gid).dot(ray_sph);
+				double real_rcs = std::pow(10.0, (m_pointRcs(j) - rcs_scale)/10.0);
+				double rcs_residual = pred_rcs - real_rcs;
+
+				double rcs_factor = 1.0; // 5e-6
+				if (std::abs(rcs_residual) > 1.0) {
+					rcs_factor = 1.0/std::abs(rcs_residual);
+				}
+
+				auto rcs_grad = make_rcs_incidence_gradient(g_center, m_gm.rcs_coefs.col(gid).cast<double>());
+				H_rcs += rcs_factor * rcs_grad * rcs_grad.transpose();
+				b_rcs += rcs_factor * rcs_grad * rcs_residual;
 			}
+		}
+
+		if (m_pointRcs.size()) {
+			//H += 1e-4 * H_rcs;
+			//b += 1e-4 * b_rcs;
 		}
 
 		//printf("  done, now calculating change\n");
@@ -188,9 +214,12 @@ std::vector<int32_t> GaussianModel::matchup(
 	detail::IcgContext icg{cl, *this, pa(0), pa};
 	icg.matchup(max_mahal);
 
+	float sqmahal = max_mahal*max_mahal;
+
 	std::vector<int32_t> ret((size_t)cl.cols());
 	for (size_t i = 0; i < ret.size(); i ++) {
-		ret[i] = icg.matchup_for(i).gidx;
+		auto& mup = icg.matchup_for(i);
+		ret[i] = mup.sqmahal <= sqmahal ? mup.gidx : -1;
 	}
 
 	return ret;
