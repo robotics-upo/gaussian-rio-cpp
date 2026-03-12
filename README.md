@@ -4,7 +4,7 @@
 
 [\[Preprint (arXiv)\]](http://arxiv.org/abs/2412.13639)
 
-**Under Construction**
+**NEWS**: Accepted for publication in IEEE Robotics and Automation Letters!
 
 ## Requirements
 
@@ -49,7 +49,7 @@ Before running the odometry, it is required to adjust the path to the datasets i
 @misc{gaussian4drio,
 	author = {Fernando Amodeo and Luis Merino and Fernando Caballero},
 	title = {4D Radar-Inertial Odometry based on Gaussian Modeling and Multi-Hypothesis Scan Matching},
-	year = {2024},
+	year = {2026},
 	eprint = {arXiv:2412.13639},
 }
 ```
@@ -58,4 +58,5 @@ Before running the odometry, it is required to adjust the path to the datasets i
 
 ![Logos](minci.png)
 
-This work was partially supported by the following grants: 1) INSERTION PID2021-127648OB-C31, and 2) NORDIC TED2021-132476B-I00 projects, funded by MCIN/AEI/ 10.13039/501100011033 and the "European Union NextGenerationEU / PRTR".
+Fernando Amodeo is supported by the predoctoral grant PRE2022-105119 funded by MICIU/AEI/10.13039/501100011033 and by ESF+.
+This work was also partially supported by the following grants: 1) INSERTION PID2021-127648OB-C31, and 2) CO-BUILD PID2024-161069OB-C31 projects, funded by MCIN/AEI/10.13039/501100011033 and by *ERDF A way of making Europe*.
