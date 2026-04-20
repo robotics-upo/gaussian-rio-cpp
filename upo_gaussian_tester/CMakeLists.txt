@@ -11,7 +11,6 @@ set(_my_catkin_deps
 	sensor_msgs
 )
 
-find_package(Ceres REQUIRED)
 find_package(small_gicp REQUIRED)
 find_package(yaml-cpp REQUIRED)
 

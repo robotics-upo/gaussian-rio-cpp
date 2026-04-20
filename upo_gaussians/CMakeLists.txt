@@ -14,7 +14,6 @@ find_package(Boost REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(PCL 1.3 REQUIRED COMPONENTS common)
 find_package(OpenMP REQUIRED)
-find_package(Ceres REQUIRED)
 find_package(small_gicp REQUIRED)
 
 # PCL uses old-style CMake... we need to wrap it into a proper target
@@ -69,7 +68,6 @@ target_link_libraries(upo_gaussians PUBLIC
 target_link_libraries(upo_gaussians PRIVATE
 	Boost::boost
 	OpenMP::OpenMP_CXX
-	Ceres::ceres
 	small_gicp::small_gicp
 )
 
@@ -85,7 +83,7 @@ set_target_properties(upo_gaussians PROPERTIES
 
 	CUDA_RUNTIME_LIBRARY Shared
 	CUDA_STANDARD 17
-	#CUDA_ARCHITECTURES "50;53-real;61-real;75-real;86-real"
+	CUDA_ARCHITECTURES "native"
 )
 
 target_include_directories(upo_gaussians PRIVATE
@@ -101,7 +99,6 @@ target_sources(upo_gaussians PRIVATE
 	src/kalman_core.cpp
 	src/radar.cpp
 	src/traj.cpp
-	src/gaussian_fitting.cpp
 	src/gaussian_fitting_server.cpp
 	src/gaussian_fitting_abl.cpp
 	src/gaussian_scan_matching.cpp
