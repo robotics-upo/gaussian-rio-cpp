@@ -1,5 +1,6 @@
 #include "gaussian_scan_matching.hpp"
 #include <chrono>
+#include "correction.hpp"
 
 namespace upo_gaussians {
 
@@ -22,7 +23,7 @@ IcgContext::IcgContext(
 	m_partidx.reserve(m_numParticles);
 	m_points.reserve(m_numPoints);
 	for (uint32_t i = 0; i < m_numPoints; i ++) {
-		m_points[i].segment<3>(0) = init_pose.cast<float>() * cl.col(i).segment<3>(0);
+		m_points[i].segment<3>(0) = cl.col(i).segment<3>(0);
 	}
 
 	if (rcs_index >= 0 && model.has_rcs()) {
@@ -30,13 +31,15 @@ IcgContext::IcgContext(
 		m_pointRcs = cl.row(rcs_index).transpose();
 	}
 
+	Pose inv_pose = init_pose.inverse();
+
 	m_g_centers.reserve(m_numGaussians);
 	m_g_invscale.reserve(m_numGaussians);
 	m_g_invrot.reserve(m_numGaussians);
 	for (uint32_t i = 0; i < m_numGaussians; i ++) {
-		m_g_centers[i].segment<3>(0) = model.centers.col(i).cast<float>();
+		m_g_centers[i].segment<3>(0) = (inv_pose*model.centers.col(i)).cast<float>();
 		m_g_invscale[i].segment<3>(0) = (-model.log_scales.col(i).array()).exp().matrix().cast<float>();
-		m_g_invrot[i] = model.quats(i).conjugate().cast<float>();
+		m_g_invrot[i] = (Quat{inv_pose.rotation()}*model.quats(i)).conjugate().cast<float>();
 	}
 
 	m_T_tran.reserve(m_numParticles);
@@ -103,6 +106,8 @@ void IcgContext::iteration(float mahal_thresh, double min_change_rot, double min
 		Quat T_rot = m_T_rot[i].cast<double>();
 		Vec<3> T_tran = m_T_tran[i].head<3>().cast<double>();
 
+		unsigned num_rcs_points = 0;
+
 		for (size_t j = 0; j < m_numPoints; j ++) {
 			int32_t gid = matchups[j].gidx;
 			if (gid < 0) {
@@ -115,7 +120,8 @@ void IcgContext::iteration(float mahal_thresh, double min_change_rot, double min
 				factor = max_sqmahal/sqmahal;
 			}
 
-			Vec<3> transed_point = T_rot*m_points[j].head<3>().cast<double>() + T_tran;
+			Vec<3> radar_point = m_points[j].head<3>().cast<double>();
+			Vec<3> transed_point = T_rot*radar_point + T_tran;
 
 			Vec<3> g_center = m_g_centers[gid].head<3>().cast<double>();
 			Vec<3> g_invscale = m_g_invscale[gid].head<3>().cast<double>();
@@ -132,49 +138,63 @@ void IcgContext::iteration(float mahal_thresh, double min_change_rot, double min
 			b += factor * J.transpose() * P * (transed_point - g_center);
 
 			if (m_pointRcs.size()) {
-				float rcs_scale = m_gm.rcs_scales(gid);
-				if (std::isnan(rcs_scale)) {
+				Vecf<2> rcs_scale = m_gm.rcs_scales.col(gid);
+				if (std::isnan(rcs_scale(0))) {
 					continue;
 				}
 
-				/*
-				Vec<3> ray_unnorm = transed_point - g_center;
-				auto ray_sph = make_sph<GaussianModel::G_SPH_LEVEL,float>(ray_unnorm.normalized().cast<float>());
-				double pred_rcs = m_gm.rcs_coefs.col(gid).dot(ray_sph);
-				double real_rcs = std::pow(10.0, (m_pointRcs(j) - rcs_scale)/10.0);
+				Vec<6> rcs_grad;
+				double pred_rcs = rcs_sph_gradient(radar_point, g_center, m_gm.rcs_coefs.col(gid).cast<double>(), T_tran, T_rot, rcs_grad);
+				//double real_rcs = std::pow(10.0, (m_pointRcs(j) - rcs_scale)/10.0);
+				double real_rcs = (m_pointRcs(j) - rcs_scale(0)) / rcs_scale(1);
 
-				auto rcs_grad = make_rcs_gradient(transed_point, g_center, m_gm.rcs_coefs.col(gid).cast<double>());
-				H_rcs += rcs_grad * rcs_grad.transpose();
-				b_rcs += rcs_grad * (pred_rcs - real_rcs);
-				*/
+#define WANT_ROBUST_RCS
+#ifdef WANT_ROBUST_RCS
+				double rcs_residual = pred_rcs - real_rcs;
+				double rcs_cost = rcs_residual*rcs_residual;
 
-				Vec<3> ray_unnorm = m_initPose.inverse()*(T_rot.conjugate()*(g_center-T_tran));
-				if (ray_unnorm.x() < 0.0) {
-					continue;
-				}
+				auto rho = detail::cauchy_loss(rcs_cost, 1.0);
+				//auto rho = detail::tanh_loss(rcs_cost);
+				//printf("  RCS cost=%f rho=%f\n", rcs_cost, rho(0));
 
-				auto ray_sph = make_sph<GaussianModel::G_SPH_LEVEL,float>(ray_unnorm.normalized().cast<float>());
-				double pred_rcs = m_gm.rcs_coefs.col(gid).dot(ray_sph);
-				double real_rcs = std::pow(10.0, (m_pointRcs(j) - rcs_scale)/10.0);
+				detail::Corrector cor{rcs_cost, rho};
+				cor.correct_gradient(rcs_grad, rcs_residual);
+				cor.correct_residual(rcs_residual);
+
+#else
 				double rcs_residual = pred_rcs - real_rcs;
 
-				double rcs_factor = 1.0; // 5e-6
-				if (std::abs(rcs_residual) > 1.0) {
-					rcs_factor = 1.0/std::abs(rcs_residual);
-				}
+#endif
 
-				auto rcs_grad = make_rcs_incidence_gradient(g_center, m_gm.rcs_coefs.col(gid).cast<double>());
-				H_rcs += rcs_factor * rcs_grad * rcs_grad.transpose();
-				b_rcs += rcs_factor * rcs_grad * rcs_residual;
+				//std::cout << "    SMRCS grad=" << rcs_grad.transpose() << std::endl;
+				//std::cout << "      RCS real=" << real_rcs << "; pred=" << pred_rcs << std::endl;
+				H_rcs += rcs_grad * rcs_grad.transpose();
+				//H_rcs += Mat<6>::Identity();
+				b_rcs += rcs_grad * rcs_residual;
+
+				num_rcs_points++;
 			}
 		}
 
-		if (m_pointRcs.size()) {
-			//H += 1e-4 * H_rcs;
-			//b += 1e-4 * b_rcs;
+		H /= double(m_numPoints);
+		b /= double(m_numPoints);
+
+		if (num_rcs_points) {
+			H_rcs /= num_rcs_points;
+			b_rcs /= num_rcs_points;
+
+			for (unsigned i = 0; i < 3; i ++) {
+				H_rcs.row(i).setZero();
+				H_rcs.col(i).setZero();
+				H_rcs(i,i) = 1;
+				b_rcs(i) = 0;
+			}
+
+			double geo_weight = 1.0 - rcs_weight;
+			H = geo_weight*H + rcs_weight*H_rcs;
+			b = geo_weight*b + rcs_weight*b_rcs;
 		}
 
-		//printf("  done, now calculating change\n");
 
 		Vec<6> change = H.ldlt().solve(-b);
 		//std::cout << "  change = [" << change.transpose() << "]" << std::endl;

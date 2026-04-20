@@ -44,7 +44,13 @@ namespace upo_gaussians {
 		return ret;
 	}
 
-	Vec<6> make_rcs_gradient(Vec<3> const& in_pos, Vec<3> const& in_gpos, Vec<16> const& in_rcs);
-	Vec<6> make_rcs_incidence_gradient(Vec<3> const& in_gpos, Vec<16> const& in_rcs);
+	double rcs_sph_gradient(
+		Vec<3> const& radar_point,
+		Vec<3> const& g_center,
+		Vec<16> const& g_rcs,
+		Vec<3> const& r_pos,
+		Quat const& r_rot,
+		Vec<6>& out_grad
+	);
 
 }

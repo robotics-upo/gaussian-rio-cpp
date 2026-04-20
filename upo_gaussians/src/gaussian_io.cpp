@@ -70,7 +70,7 @@ bool GaussianModel::load(const char* fname)
 	quats.resize(hdr.num_gaussians);
 
 	if (hdr.flags & GFLAG_HAS_SPH) {
-		rcs_scales.resize(hdr.num_gaussians);
+		rcs_scales.resize(Eigen::NoChange, hdr.num_gaussians);
 		rcs_coefs.resize(Eigen::NoChange, hdr.num_gaussians);
 	}
 

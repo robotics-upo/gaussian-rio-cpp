@@ -127,7 +127,7 @@ public:
 	}
 
 	Pose particle(size_t i) const {
-		return particle_cur(i)*m_initPose;
+		return m_initPose*particle_cur(i);
 	}
 
 	Matchup const& matchup_for(size_t i) const {

@@ -16,8 +16,28 @@ namespace upo_gaussians {
 		constexpr RadarPoint(RadarPoint&) = default;
 	};
 
+	struct EIGEN_ALIGN16 PosedLocalPoint {
+		PCL_ADD_POINT4D;
+		pcl::PointXYZ local_pos;
+		Quatf local_rot;
+		EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
+		PosedLocalPoint(float x = 0.0f, float y = 0.0f, float z = 0.0f) :
+			data{x,y,z,1.0f}, local_pos{}, local_rot{Quatf::Identity()} { }
+		PosedLocalPoint(PosedLocalPoint const&) = default;
+		PosedLocalPoint(PosedLocalPoint&) = default;
+
+		Eigen::Isometry3f getLocalPose() const {
+			Eigen::Isometry3f ret = Eigen::Isometry3f::Identity();
+			ret.matrix().block(0,0,3,3) = local_rot.toRotationMatrix();
+			ret.matrix().block(0,3,3,1) = local_pos.getArray3fMap();
+			return ret;
+		}
+
+	};
+
 	using RadarCloud = pcl::PointCloud<RadarPoint>;
-	using IncidenceCloud = pcl::PointCloud<pcl::PointXYZ>;
+	using IncidenceCloud = pcl::PointCloud<PosedLocalPoint>;
 
 	struct RadarFilterParams {
 		float min_power     = 10.0f;

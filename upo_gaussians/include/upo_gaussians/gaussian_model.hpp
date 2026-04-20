@@ -25,12 +25,12 @@ namespace upo_gaussians {
 		struct GaussianMatchParams {
 			uint32_t max_iters       = 20;
 			float    mahal_thresh    = 4.0f;
-			double   min_change_tran = 1.0e-3;
-			double   min_change_rot  = 0.1*M_TAU/360.0;
+			double   min_change_tran = 0.05;
+			double   min_change_rot  = 1.0*M_TAU/360.0;
 		};
 
 		struct GaussianRcsMatchParams {
-			double   rcs_weight      = 0.01;
+			double   rcs_weight      = 0.25;
 		};
 
 		struct GaussianMatchResults {
@@ -61,7 +61,7 @@ namespace upo_gaussians {
 		VecArray<3> log_scales;
 		QuatArray   quats;
 
-		DynVecf     rcs_scales;
+		VecArray<2,           float> rcs_scales;
 		VecArray<G_SPH_NCOEFS,float> rcs_coefs;
 
 		Eigen::Index size() const {
@@ -69,7 +69,7 @@ namespace upo_gaussians {
 		}
 
 		bool has_rcs() const {
-			return rcs_scales.size() != 0;
+			return rcs_scales.cols() != 0;
 		}
 
 		auto quats_array() {
