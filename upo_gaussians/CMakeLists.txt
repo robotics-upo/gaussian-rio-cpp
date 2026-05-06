@@ -99,11 +99,13 @@ target_sources(upo_gaussians PRIVATE
 	src/kalman_core.cpp
 	src/radar.cpp
 	src/traj.cpp
+	src/gaussian_fitting.cpp
 	src/gaussian_fitting_server.cpp
 	src/gaussian_fitting_abl.cpp
 	src/gaussian_scan_matching.cpp
 	src/gaussian_rcs.cpp
 	src/gaussian_io.cpp
+	src/fit_kernels.cu
 	src/icg_kernels.cu
 	src/rio_base.cpp
 	src/rio_ndt.cpp

@@ -40,16 +40,21 @@ namespace upo_gaussians {
 
 			void split(BisectingKMeans& ctx)
 			{
-				// Do nothing if we are too small
-				if (indices.size() < 2) {
-					return;
-				}
-
 				// Select two random points to serve as initial cluster centers
 				size_t init_i = ctx.random_index(indices);
 				size_t init_j = ctx.random_index(indices);
-				while (init_j == init_i) {
+				size_t attempts = 0;
+				while (attempts < 10 && ctx.points_are_too_close(init_i, init_j)) {
 					init_j = ctx.random_index(indices);
+					attempts ++;
+				}
+
+				if (attempts == 10) {
+					fprintf(stderr, "BisectingKMeans::split(): cluster resisted splitting\n");
+					for (size_t idx : indices) {
+						std::cerr << "[" << idx << "]: " << ctx.point(idx).transpose() << std::endl;
+					}
+					std::abort();
 				}
 
 				// Create and initialize leaves
@@ -121,6 +126,20 @@ namespace upo_gaussians {
 					}
 				}
 
+				if (!left->indices.size()) {
+					fprintf(stderr, "BisectingKMeans::rebalance(): left cluster emptied out\n");
+					std::cerr << "L: [" << left->center.transpose() << "]" << std::endl;
+					std::cerr << "R: [" << right->center.transpose() << "]" << std::endl;
+					std::abort();
+				}
+
+				if (!right->indices.size()) {
+					fprintf(stderr, "BisectingKMeans::rebalance(): right cluster emptied out\n");
+					std::cerr << "L: [" << left->center.transpose() << "]" << std::endl;
+					std::cerr << "R: [" << right->center.transpose() << "]" << std::endl;
+					std::abort();
+				}
+
 				left->center  = lcenter /  left->indices.size();
 				right->center = rcenter / right->indices.size();
 
@@ -154,21 +173,33 @@ namespace upo_gaussians {
 			return indices[std::uniform_int_distribution<size_t>{0, indices.size()-1}(m_rng)];
 		}
 
+		bool points_are_too_close(size_t i, size_t j) {
+			if (i == j) {
+				return true;
+			}
+
+			return (point(j)-point(i)).squaredNorm() < 1e-6;
+		}
+
 	public:
 		template <typename PointType>
-		BisectingKMeans(pcl::PointCloud<PointType> const& cl, RandomEngine& rng, size_t num_clusters, Scalar tol = Scalar{1.0e-4}) :
-			BisectingKMeans{cl.getMatrixXfMap(), rng, num_clusters, tol} { }
+		BisectingKMeans(pcl::PointCloud<PointType> const& cl, RandomEngine& rng, size_t max_clusters, size_t min_points = 2, Scalar tol = Scalar{1.0e-4}) :
+			BisectingKMeans{cl.getMatrixXfMap(), rng, max_clusters, min_points, tol} { }
 
-		BisectingKMeans(AnyCloudIn cl, RandomEngine& rng, size_t num_clusters, Scalar tol = Scalar{1.0e-4}) :
+		BisectingKMeans(AnyCloudIn cl, RandomEngine& rng, size_t max_clusters, size_t min_points = 2, Scalar tol = Scalar{1.0e-4}) :
 			m_cloud{cl}, m_rng{rng}, m_tol{tol}
 		{
-			m_nodes.reserve(2*num_clusters - 1);
+			m_nodes.reserve(2*max_clusters - 1);
 
 			auto& root = m_nodes.emplace_back();
 			root.initialize(cl.cols());
 
-			while (--num_clusters) {
-				root.candidate()->split(*this);
+			while (--max_clusters) {
+				auto leaf = root.candidate();
+				if (leaf->size() < 2*min_points) {
+					break;
+				}
+				leaf->split(*this);
 			}
 		}
 

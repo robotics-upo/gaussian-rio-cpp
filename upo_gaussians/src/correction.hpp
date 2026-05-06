@@ -4,14 +4,14 @@
 namespace upo_gaussians::detail {
 
 template <typename Scalar>
-static inline Scalar sech2(Scalar input)
+UPO_HOST_DEVICE static inline Scalar sech2(Scalar input)
 {
 	Scalar sech = Scalar{1.0}/std::cosh(input);
 	return sech*sech;
 }
 
 template <typename Scalar>
-static inline Vec<3,Scalar> cauchy_loss(Scalar input, Scalar a = Scalar{1.0})
+UPO_HOST_DEVICE static inline Vec<3,Scalar> cauchy_loss(Scalar input, Scalar a = Scalar{1.0})
 {
 	Scalar b = a*a;
 	Scalar c = Scalar{1.0}/b;
@@ -27,7 +27,7 @@ static inline Vec<3,Scalar> cauchy_loss(Scalar input, Scalar a = Scalar{1.0})
 }
 
 template <typename Scalar>
-static inline Vec<3,Scalar> tanh_loss(Scalar input)
+UPO_HOST_DEVICE static inline Vec<3,Scalar> tanh_loss(Scalar input)
 {
 	Vec<3,Scalar> ret;
 	ret(0) = std::tanh(input);
@@ -46,7 +46,7 @@ struct Corrector {
 	static constexpr Scalar One  = Scalar{1.0};
 	static constexpr Scalar Two  = Scalar{2.0};
 
-	explicit Corrector(Scalar input, Vec<3,Scalar> const& rho)
+	UPO_HOST_DEVICE explicit Corrector(Scalar input, Vec<3,Scalar> const& rho)
 	{
 		m_sqrtRho1 = std::sqrt(rho(1));
 
@@ -62,18 +62,18 @@ struct Corrector {
 	}
 
 	template <int Outputs>
-	void correct_residual(Vec<Outputs,Scalar>& residual)
+	UPO_HOST_DEVICE void correct_residual(Vec<Outputs,Scalar>& residual)
 	{
 		residual *= m_resScale;
 	}
 
-	void correct_residual(Scalar& residual)
+	UPO_HOST_DEVICE void correct_residual(Scalar& residual)
 	{
 		residual *= m_resScale;
 	}
 
 	template <int Outputs, int Inputs>
-	void correct_jacobian(Mat<Outputs,Inputs,Scalar>& J, Vec<Outputs,Scalar> const& residual)
+	UPO_HOST_DEVICE void correct_jacobian(Mat<Outputs,Inputs,Scalar>& J, Vec<Outputs,Scalar> const& residual)
 	{
 		if (m_alphaInput == Zero) {
 			J *= m_resScale;
@@ -94,7 +94,7 @@ struct Corrector {
 	}
 
 	template <int Inputs>
-	void correct_gradient(Vec<Inputs,Scalar>& grad, Scalar residual)
+	UPO_HOST_DEVICE void correct_gradient(Vec<Inputs,Scalar>& grad, Scalar residual)
 	{
 		if (m_alphaInput == Zero) {
 			grad *= m_resScale;
