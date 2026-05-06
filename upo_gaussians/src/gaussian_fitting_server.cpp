@@ -17,13 +17,20 @@ void GaussianModel::fit_server(AnyCloudIn cl, FitParams const& p)
 		std::abort();
 	}
 
-	centers.resize(Eigen::NoChange, p.num_gaussians);
-	log_scales.resize(Eigen::NoChange, p.num_gaussians);
-	quats.resize(p.num_gaussians);
+	// Adapt to old style number of Gaussians handling
+	FitParams pcopy = p;
+	if (pcopy.points_per_g) {
+		pcopy.max_gaussians = (2*cl.cols() + 1) / (2*pcopy.points_per_g);
+		pcopy.points_per_g = 0;
+	}
+
+	centers.resize(Eigen::NoChange, pcopy.max_gaussians);
+	log_scales.resize(Eigen::NoChange, pcopy.max_gaussians);
+	quats.resize(pcopy.max_gaussians);
 
 	uint32_t cmd = 0;
 	fwrite(&cmd, sizeof(cmd), 1, fout);
-	fwrite(&p, sizeof(p), 1, fout);
+	fwrite(&pcopy, sizeof(pcopy), 1, fout);
 	uint32_t num_points = cl.cols();
 	fwrite(&num_points, sizeof(num_points), 1, fout);
 

@@ -63,16 +63,15 @@ bool RioGaussian::process_keyframe(RadarCloud::Ptr cl)
 	if (!m_ablated) {
 		detail::GaussianFitParams p;
 
-		p.num_gaussians = (2*cl->size() + 1) / (2*m_gaussian_sz);
+		p.points_per_g = m_gaussian_sz;
 		p.num_threads = num_threads();
 		//p.verbose = true;
 
 		const char* fng = getenv("FORCE_NUM_GAUSSIANS");
 		if (fng) {
-			p.num_gaussians = atoi(fng);
+			p.max_gaussians = atoi(fng);
+			p.points_per_g = 0;
 		}
-
-		std::cout << "RioGaussian: modeling " << p.num_gaussians << " gaussians with " << p.num_threads << " threads" << std::endl;
 
 		m_model.fit_server(*cl, p);
 	} else {

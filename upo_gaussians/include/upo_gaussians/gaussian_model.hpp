@@ -8,7 +8,8 @@ namespace upo_gaussians {
 	namespace detail {
 
 		struct GaussianFitParams {
-			size_t   num_gaussians  = 150;
+			uint32_t max_gaussians  = 4096;
+			uint32_t points_per_g   = 16;
 			double   initial_scale  = 1.0;
 			double   min_scale      = 0.05;
 			double   disc_thickness = 0.15;
