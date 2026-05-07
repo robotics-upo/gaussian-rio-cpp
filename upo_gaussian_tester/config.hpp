@@ -225,6 +225,7 @@ namespace YAML {
 			_DECODE_FIELD_OPT(match_rot_std);
 			_DECODE_FIELD_OPT(egovel_pct);
 			_DECODE_FIELD_OPT(scanmatch_pct);
+			_DECODE_FIELD_OPT(max_keyframes);
 			_DECODE_FIELD_OPT(deterministic);
 			_DECODE_FIELD_OPT(match_6dof);
 			return true;

@@ -19,6 +19,7 @@ namespace upo_gaussians {
 			double   match_rot_std = 2.0f*M_TAU/360.0; ///< Default scan matching rotation uncertainty [rad]
 			float    egovel_pct    = 0.05f;            ///< Egovelocity outlier percentile for EKF update rejection filter [0,1)
 			float    scanmatch_pct = 0.1f;             ///< Scan matching outlier percentile for EKF update rejection filter [0,1)
+			uint32_t max_keyframes = 1;                ///< Maximum number of keyframes to keep (0=keep all)
 			uint8_t  num_threads   = 4;                ///< Number of threads used for processing (hint)
 			bool     deterministic = true;             ///< Attempts to use deterministic algorithms, may be slower (hint)
 			bool     match_6dof    = false;            ///< true for 6-DoF scan matching, false for 3-DoF (x/y/yaw)
@@ -32,6 +33,13 @@ namespace upo_gaussians {
 			ImuData::Bundle imu_data;
 		};
 
+		struct RioStoredKf {
+			double          time = 0.0;
+			Pose            pose = Pose::Identity();
+			Mat<6>          cov  = Mat<6>::Zero();
+			RadarCloud::Ptr scan{};
+		};
+
 	}
 
 	struct RioBase : public Strapdown {
@@ -39,6 +47,7 @@ namespace upo_gaussians {
 		using InitImuParams = detail::StrapdownInitImuParams;
 		using InitParams = detail::RioBaseInitParams;
 		using Input      = detail::RioInput;
+		using StoredKf   = detail::RioStoredKf;
 		using Keyframer  = std::function<bool(RioBase const&)>;
 
 		RioBase(
@@ -49,26 +58,32 @@ namespace upo_gaussians {
 		bool is_initial() const { return m_imu_time < 0.0; }
 		double time() const { return m_imu_time - m_ref_time; }
 
-		bool has_keyframe() const { return m_keyframe_time >= 0.0; }
-		bool at_keyframe() const { return has_keyframe() && m_keyframe_time == m_match_time; }
-		double kf_time() const { return time() - m_keyframe_time; }
+		bool  has_keyframe() const { return m_kfs.size() != 0; }
+		double ref_kf_time() const { return has_keyframe() ? m_kfs.back().time : -1.0; }
+		Pose   ref_kf_pose() const { return has_keyframe() ? m_kfs.back().pose : Pose::Identity(); }
+		Mat<6> ref_kf_cov() const { return has_keyframe() ? m_kfs.back().cov : Mat<6>::Zero(); }
+
+		bool at_keyframe() const { return has_keyframe() && ref_kf_time() == m_match_time; }
+		double kf_time() const { return time() - ref_kf_time(); }
 		double match_time() const { return time() - m_match_time; }
-		Pose kf_pose() const { return m_keyframe.inverse()*pose(); }
+		Pose kf_pose() const { return ref_kf_pose().inverse()*pose(); }
+
+		auto const& keyframes() const { return m_kfs; }
 
 		Vec<3> angvel() const { return m_angvel; }
 		Vec<3> egovel() const { return calc_egovel(m_angvel); }
 
 		RadarCloud const* last_cloud() const { return m_last_cloud.get(); }
-		RadarCloud const* kf_cloud() const { return m_kf_cloud.get(); }
+		RadarCloud const* kf_cloud() const { return has_keyframe() ? m_kfs.back().scan.get() : nullptr; }
 
 		void process(Input const& input);
 
-	protected:
+	private:
 		PropParams m_prop_params;
 		InitImuParams m_init_imu_params;
 
+		std::list<StoredKf> m_kfs{};
 		std::shared_ptr<RadarCloud> m_last_cloud{};
-		std::shared_ptr<RadarCloud> m_kf_cloud{};
 
 		double m_max_init_time;
 		double m_ref_time = -1.0;
@@ -79,10 +94,7 @@ namespace upo_gaussians {
 		size_t m_imu_init_num   = 0;
 		Vec<3> m_angvel = Vec<3>::Zero();
 
-		Pose m_keyframe = Pose::Identity();
-		Mat<6> m_keyframe_cov{};
-		double m_initial_kf_time = -1.0;
-		double m_keyframe_time = -1.0;
+		uint32_t m_max_kfs;
 		double m_match_time = -1.0;
 		Keyframer m_keyframer;
 
@@ -98,6 +110,7 @@ namespace upo_gaussians {
 		float m_egovel_pct;
 		float m_scanmatch_pct;
 
+	protected:
 		unsigned num_threads() const { return m_num_threads; }
 		bool   deterministic() const { return m_deterministic; }
 		double   voxel_size()  const { return m_voxel_size;  }
@@ -121,7 +134,7 @@ namespace upo_gaussians {
 			Pose const& match_pose,
 			Vec<6> const& match_covdiag
 		) {
-			Strapdown::update_scanmatch(m_keyframe, m_keyframe_cov, match_pose, match_covdiag, m_match_6dof, m_scanmatch_pct);
+			Strapdown::update_scanmatch(ref_kf_pose(), ref_kf_cov(), match_pose, match_covdiag, m_match_6dof, m_scanmatch_pct);
 		}
 
 		void update_scanmatch(Pose const& match_pose) {
@@ -134,16 +147,10 @@ namespace upo_gaussians {
 		virtual bool scan_matching(RadarCloud::Ptr) { return false; }
 		virtual bool process_keyframe(RadarCloud::Ptr) { return false; }
 
-		void commit_keyframe(double kf_time) {
-			m_keyframe      = pose();
-			m_keyframe_cov  = error_cov();
-			m_keyframe_time = m_match_time = kf_time;
-			m_kf_cloud      = m_last_cloud;
-		}
-
 	private:
 		void process_imu_initial(ImuData::Bundle const& bundle);
 		void process_imu(ImuData::Bundle const& bundle);
+		void process_and_commit_keyframe(RadarCloud::Ptr cl, double time);
 	};
 
 }

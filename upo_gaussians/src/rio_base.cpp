@@ -15,6 +15,7 @@ RioBase::RioBase(
 	m_prop_params{p},
 	m_init_imu_params{p.init_imu_params},
 	m_max_init_time{p.max_init_time},
+	m_max_kfs{p.max_keyframes},
 	m_keyframer{std::move(keyframer)},
 	m_match_pos_cov{p.match_pos_std*p.match_pos_std},
 	m_match_rot_cov{p.match_rot_std*p.match_rot_std},
@@ -77,8 +78,8 @@ void RioBase::process(Input const& input)
 			}
 
 			// Attempt to capture a keyframe while the robot is still
-			if (m_initial_kf_time < 0.0 && process_keyframe(cl_ptr)) {
-				m_initial_kf_time = input.radar_time;
+			if (!has_keyframe()) {
+				process_and_commit_keyframe(cl_ptr, input.radar_time);
 			}
 		} while (0);
 
@@ -91,9 +92,11 @@ void RioBase::process(Input const& input)
 		init_imu();
 		//init_vel();
 
-		// Commit the initial keyframe
-		if (m_initial_kf_time >= 0.0) {
-			commit_keyframe(m_initial_kf_time);
+		// Update the initial keyframe with the right information
+		if (has_keyframe()) {
+			m_kfs.back().time = m_match_time = m_kfs.back().time - m_ref_time;
+			m_kfs.back().pose = pose();
+			m_kfs.back().cov  = error_cov();
 		}
 
 		// Initialize egovelocity
@@ -113,8 +116,8 @@ void RioBase::process(Input const& input)
 		m_match_time = time();
 	}
 
-	if (m_keyframer(*this) && process_keyframe(cl_ptr)) {
-		commit_keyframe(time());
+	if (m_keyframer(*this)) {
+		process_and_commit_keyframe(cl_ptr, time());
 	}
 }
 
@@ -154,6 +157,34 @@ inline void RioBase::process_imu(ImuData::Bundle const& bundle)
 	}
 
 	m_angvel = mean_gyro/num_ok - gyro_bias();
+}
+
+inline void RioBase::process_and_commit_keyframe(RadarCloud::Ptr cl, double time)
+{
+	StoredKf kf;
+	kf.time = time;
+	kf.pose = pose();
+	kf.cov  = error_cov();
+	kf.scan = cl;
+	m_kfs.emplace_back(std::move(kf));
+
+	if (!process_keyframe(cl)) {
+		// Roll back if above failed
+		m_kfs.pop_back();
+		return;
+	}
+
+	if (is_initial()) {
+		return;
+	}
+
+	// Update scan matching time
+	m_match_time = time;
+
+	// Remove old keyframes
+	while (m_max_kfs && m_kfs.size() > m_max_kfs) {
+		m_kfs.pop_front();
+	}
 }
 
 }
