@@ -73,7 +73,12 @@ bool RioGaussian::process_keyframe(RadarCloud::Ptr cl)
 			p.points_per_g = 0;
 		}
 
-		m_model.fit_server(*cl, p);
+		const char* fs = getenv("USE_NEW_GAUSSIAN_FIT");
+		if (fs && atoi(fs) != 0) {
+			m_model.fit(*cl, p);
+		} else {
+			m_model.fit_server(*cl, p);
+		}
 	} else {
 		m_model.fit_ablation(*cl);
 	}
